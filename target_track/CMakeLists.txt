@@ -6,7 +6,9 @@ set(OpenCV_DIR /usr/share/OpenCV)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
+  geometry_msgs
   OpenCV
+  tf2_ros
 )
 
 catkin_package(
@@ -24,5 +26,6 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/KCF_tracker.py
   src/RQ_tracker.py
+  src/temp2.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

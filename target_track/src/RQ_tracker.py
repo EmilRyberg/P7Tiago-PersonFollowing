@@ -2,8 +2,10 @@
 import rospy
 import cv2
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Point
 from cv_bridge import CvBridge
 from math import *
+
 # initialize the camera
 qrDet = cv2.QRCodeDetector()
 qrDet.setEpsX(0.05)
@@ -23,6 +25,8 @@ bh = HFOV / 2
 
 av = -VFOV/(h-1)
 bv = VFOV / 2
+
+targetPoint p
 
 def cb(data):
     img = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
@@ -53,13 +57,18 @@ def cb(data):
         sh = sin(Hangle)
         sv = sin(Vangle)
 
-        x = ch * (dist * cv)
-        y = sh * (dist * cv)
-        z = sv * (dist * ch)
+        p.x = ch * (dist * cv)
+        p.y = sh * (dist * cv)
+        p.z = sv * (dist * ch)
 
-        print(x, y, z)
+        pub.publish(p)
+        
+    elif:
+        p.x = None
+        p.y = None
+        p.z = None
 
-
+        pub.publish(p)
     
     cv2.imshow("Image", img)
     cv2.waitKey(1)
@@ -73,5 +82,7 @@ rospy.init_node('rq_track', anonymous=True)
 
 rospy.Subscriber("/xtion/rgb/image_color", Image, cb)
 rospy.Subscriber("/xtion/depth_registered/image_raw", Image, cb_d)
+
+pub = rospy.Publisher('target_pos', Point, queue_size=1)
 
 rospy.spin()

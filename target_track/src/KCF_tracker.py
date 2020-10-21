@@ -5,8 +5,13 @@ import cv2
 import sys
 import rospy
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Point
 from cv_bridge import CvBridge
 from math import *
+import tf2_ros
+import numpy as np
+
+np.set_printoptions(suppress=True)
 
 bridge = CvBridge()
 global init
@@ -14,6 +19,9 @@ init = 0
 global dep_rec
 dep_rec = 0
 dImg = 0
+p = Point()
+global trans
+trans = 0
 
 HFOV = 1.01229096615671
 w = 640
@@ -26,10 +34,33 @@ bh = HFOV / 2
 av = -VFOV/(h-1)
 bv = VFOV / 2
 
+def pose2mat(trans):
+    w = trans.transform.rotation.w
+    x = trans.transform.rotation.x
+    y = trans.transform.rotation.y
+    z = trans.transform.rotation.z
+    Nq = w*w + x*x + y*y + z*z
+    s = 2.0/Nq
+    X = x*s
+    Y = y*s
+    Z = z*s
+    wX = w*X; wY = w*Y; wZ = w*Z
+    xX = x*X; xY = x*Y; xZ = x*Z
+    yY = y*Y; yZ = y*Z; zZ = z*Z
+
+
+    return np.array(
+           [[ 1.0-(yY+zZ), xY-wZ, xZ+wY ],
+            [ xY+wZ, 1.0-(xX+zZ), yZ-wX ],
+            [ xZ-wY, yZ+wX, 1.0-(xX+yY) ]]), np.array([trans.transform.translation.x, 
+            trans.transform.translation.y, 
+            trans.transform.translation.z])
+
+
 
 def cb(data):
     # Read a new frame
-    frame = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
+    frame = bridge.imgmsg_to_cv2(data, desired_encoding='bgr8')
 
     global init
     if not init:
@@ -48,6 +79,7 @@ def cb(data):
 
     # Draw bounding box
     global dep_rec
+    global pub
     if ok and dep_rec:
         # Tracking success
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -60,27 +92,38 @@ def cb(data):
         xp = int(bbox[0]) + int(bbox[2] / 2)
         yp = int(bbox[1]) + int(bbox[3] / 2)
 
+        xp = w-1 if xp > w else (0 if xp < 0 else xp)
+        yp = h-1 if yp > h else (0 if yp < 0 else yp)
+
         dist = dImg.item(yp, xp)
 
         Hangle = ah * xp + bh
         Vangle = av * yp + bv
 
-        ch = cos(Hangle)
-        cv = cos(Vangle)
-        sh = sin(Hangle)
-        sv = sin(Vangle)
+        cHor = cos(Hangle)
+        cVer = cos(Vangle)
+        sHor = sin(Hangle)
+        sVer = sin(Vangle)
 
-        x = ch * (dist * cv)
-        y = sh * (dist * cv)
-        z = sv * (dist * ch)
+        v = np.array([cHor * (dist * cVer), 
+        sHor * (dist * cVer),
+        sVer * (dist * cHor)])
 
-        print(x, y, z)
+        newP = np.dot(R, v) + T
+        p.x = newP[0]
+        p.y = newP[1]
+        p.z = newP[2]
 
+        pub.publish(p)
         
     else:
-        # Tracking failure
-        cv2.putText(frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
+        p.x = float('nan')
+        p.y = float('nan')
+        p.z = float('nan')
 
+        pub.publish(p)
+
+        cv2.putText(frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
 
     # Display result
     cv2.imshow("Tracking", frame)
@@ -93,34 +136,37 @@ def cb_d(data):
     global dep_rec 
     dep_rec = 1
 
- 
-if __name__ == '__main__':
- 
-    # Set up tracker.
-    # Instead of MIL, you can also use
- 
-    tracker_types = ['BOOSTING', 'MIL','KCF', 'TLD', 'MEDIANFLOW', 'MOSSE', 'CSRT']
-    tracker_type = tracker_types[4]
- 
- 
-    if tracker_type == 'BOOSTING':
-        tracker = cv2.TrackerBoosting_create()
-    if tracker_type == 'MIL':
-        tracker = cv2.TrackerMIL_create()
-    if tracker_type == 'KCF':
-        tracker = cv2.TrackerKCF_create()
-    if tracker_type == 'TLD':
-        tracker = cv2.TrackerTLD_create()
-    if tracker_type == 'MEDIANFLOW':
-        tracker = cv2.TrackerMedianFlow_create()
-    if tracker_type == "CSRT":
-        tracker = cv2.TrackerCSRT_create()
-    if tracker_type == "MOSSE":
-        tracker = cv2.TrackerMOSSE_create()     
- 
-    rospy.init_node('kcf_track', anonymous=True)
 
-    rospy.Subscriber("/xtion/rgb/image_color", Image, cb)
-    rospy.Subscriber("/xtion/depth_registered/image_raw", Image, cb_d)
+rospy.init_node('kcf_track', anonymous=True)
 
-    rospy.spin()
+rospy.Subscriber("/xtion/rgb/image_raw", Image, cb)
+rospy.Subscriber("/xtion/depth_registered/image_raw", Image, cb_d)
+
+pub = rospy.Publisher('target_pos', Point, queue_size=1)
+
+tracker_types = ['BOOSTING', 'MIL','KCF', 'TLD', 'MEDIANFLOW', 'MOSSE', 'CSRT']
+tracker_type = tracker_types[4]
+
+if tracker_type == 'BOOSTING':
+    tracker = cv2.TrackerBoosting_create()
+if tracker_type == 'MIL':
+    tracker = cv2.TrackerMIL_create()
+if tracker_type == 'KCF':
+    tracker = cv2.TrackerKCF_create()
+if tracker_type == 'TLD':
+    tracker = cv2.TrackerTLD_create()
+if tracker_type == 'MEDIANFLOW':
+    tracker = cv2.TrackerMedianFlow_create()
+if tracker_type == "CSRT":
+    tracker = cv2.TrackerCSRT_create()
+if tracker_type == "MOSSE":
+    tracker = cv2.TrackerMOSSE_create()    
+
+tfBuffer = tf2_ros.Buffer()
+listener = tf2_ros.TransformListener(tfBuffer)
+rospy.sleep(1)
+trans = tfBuffer.lookup_transform('base_link', 'xtion_depth_frame', rospy.Time())
+
+R, T = pose2mat(trans)
+
+rospy.spin()
