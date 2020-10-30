@@ -59,7 +59,7 @@ def pose2mat(trans):
             trans.transform.translation.z])
 
 
-
+# CB for RGB image
 def cb(data):
     # Read a new frame
     np_arr = np.fromstring(data.data, np.uint8)
@@ -150,6 +150,7 @@ def cb(data):
 
     cv2.waitKey(1)
 
+# Depth image cb
 def cb_d(data):
     global dImg
     dImg = bridge.imgmsg_to_cv2(data, desired_encoding='passthrough')
