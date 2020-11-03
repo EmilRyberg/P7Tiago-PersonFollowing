@@ -3,3 +3,9 @@
 **/build/**/*
 **/install/**/*
 **/log/**/*
+
+src/feature_extractor/.idea/
+
+*.pb
+
+src/feature_extractor/__pycache__/
