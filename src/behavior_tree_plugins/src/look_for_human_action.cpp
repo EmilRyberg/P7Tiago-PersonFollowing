@@ -2,16 +2,16 @@
 #include <memory>
 
 #include "behavior_tree_plugins/look_for_human_action.hpp"
-#include "nav2_behavior_tree/plugins/action/wait_action.hpp"
+#include "marathon_ros2/src/navigation2/nav2_behavior_tree/plugins/action/wait_action.hpp"
 
 namespace pf
 {
 
   LookForHumanAction::LookForHumanAction(
-    const std::string & xml_tag_name,
+    const std::string & xml_tag_name, 
     const std::string & action_name,
     const BT::NodeConfiguration & conf)
-  : BtActionNode<nav2_msgs::action::Wait>(xml_tag_name, action_name, conf)
+  : BtActionNode<nav2_msgs::action::Spin>(xml_tag_name, action_name, conf)
   {
     int duration;
     getInput("wait_duration", duration);
