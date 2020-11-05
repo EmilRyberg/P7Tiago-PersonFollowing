@@ -6,15 +6,25 @@ import numpy as np
 
 
 class FeatureDetectorNet(nn.Module):
-    def __init__(self, backbone, bottleneck_input_size):
+    def __init__(self, backbone=None, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=5):
         super(FeatureDetectorNet, self).__init__()
-        self.backbone = backbone
+        self.backbone = None
+        if backbone:
+            self.backbone = backbone
+        else:
+            mn = mobilenet_v2(True)
+            self.backbone = mn.features
         self.bottleneck = nn.Linear(bottleneck_input_size, 128)
+        self.classifier = nn.Linear(128, num_classes)
+        self.use_classifier = use_classifier
 
     def forward(self, x):
         x = self.backbone(x)
         x = x.view(-1, num_flat_features(x))
-        return self.bottleneck(x)
+        x = self.bottleneck(x)
+        if self.use_classifier:
+            x = self.classifier(x)
+        return x
 
 
 def num_flat_features(x):
