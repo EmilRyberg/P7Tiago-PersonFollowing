@@ -13,6 +13,7 @@ class FeatureDetectorNet(nn.Module):
             self.backbone = backbone
         else:
             mn = mobilenet_v2(True)
+            print(mn)
             self.backbone = mn.features
         self.bottleneck = nn.Linear(bottleneck_input_size, 128)
         self.classifier = nn.Linear(128, num_classes)
