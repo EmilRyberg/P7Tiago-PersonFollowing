@@ -31,7 +31,7 @@ class ClassificationDataset(Dataset):
     def __getitem__(self, idx):
         img_path, class_id = self.images_with_class[idx]
         image = np.array(Image.open(img_path))
-        image = torch.from_numpy(image)
+        image = transforms.ToTensor()(image)
         image = F.interpolate(image, self.image_size)
         if self.transforms:
             image = self.transforms(image)

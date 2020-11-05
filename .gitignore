@@ -9,4 +9,4 @@ src/feature_extractor/.idea/
 *.pb
 
 src/feature_extractor/__pycache__/
-**/dataset/**/*
+**/dataset*/**/*
