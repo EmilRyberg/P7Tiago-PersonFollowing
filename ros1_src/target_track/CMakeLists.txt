@@ -21,5 +21,6 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/KCF_tracker.py
   src/RQ_tracker.py
+  src/image_saver.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

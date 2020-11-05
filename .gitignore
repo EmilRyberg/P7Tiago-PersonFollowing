@@ -3,3 +3,7 @@
 **/build/**/*
 **/install/**/*
 **/log/**/*
+
+.idea/
+venv
+*.pyc
