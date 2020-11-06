@@ -40,22 +40,66 @@ class ClassificationDataset(Dataset):
         return image, class_id
 
 
-class FeatureExtractorDataset(Dataset):
-    def __init__(self, dataset_dir):
+class TripletDataset(Dataset):
+    def __init__(self, dataset_dir, images_per_class=50, image_size=(336, 120), data_transform=None):
         self.image_folders = glob(dataset_dir + "/*/")
-        self.class_with_images = []
+        self.images_grouped_by_class = []
         self.flattened_class_with_images = []
+        self.images_per_class = images_per_class
+        self.image_size = image_size
+        self.data_transform = data_transform
+        self.triplets = []
         class_id = 0
+        self.num_classes = len(self.image_folders)
         for folder in self.image_folders:
             png_paths = glob(f"{folder}*.png")
             jpg_paths = glob(f"{folder}*.jpg")
             all_images = []
             all_images.extend(png_paths)
             all_images.extend(jpg_paths)
-            #self.class_with_images.append((class_id, all_images))
             for img_path in all_images:
-                self.flattened_class_with_images.append((class_id, img_path))
+                self.flattened_class_with_images.append((img_path, class_id))
+            self.images_grouped_by_class.append((class_id, all_images))
             class_id += 1
+        self.sample_triplets()
+
+    def sample_triplets(self):
+        self.triplets = []
+        for id in range(self.num_classes):
+            cid, class_images = self.images_grouped_by_class[id]
+            class_images = np.array(class_images)
+            other_images = [r[1] for r in self.images_grouped_by_class if r[0] != cid]
+            other_images = [item for sub_list in other_images for item in sub_list]
+            other_images = np.array(other_images)
+            np.random.shuffle(other_images)
+            np.random.shuffle(class_images)
+            for i in range(self.images_per_class):
+                anchor = class_images[i]
+                positive = np.random.choice(class_images, 1)[0]
+                negative = np.random.choice(other_images, 1)[0]
+                #print(f"a: {anchor}, p: {positive}, n: {negative}")
+                self.triplets.append((anchor, positive, negative))
+
+    def __len__(self):
+        return len(self.triplets)
 
     def __getitem__(self, idx):
-        return self.flattened_class_with_images[idx]
+        a_path, p_path, n_path = self.triplets[idx]
+        a_img = Image.open(a_path)
+        p_img = Image.open(p_path)
+        n_img = Image.open(n_path)
+
+        if self.data_transform:
+            a_img = self.data_transform(a_img)
+            p_img = self.data_transform(p_img)
+            n_img = self.data_transform(n_img)
+        else:
+            a_img = transforms.ToTensor()(a_img)
+            p_img = transforms.ToTensor()(p_img)
+            n_img = transforms.ToTensor()(n_img)
+
+        a_img = F.interpolate(a_img.unsqueeze(0), self.image_size).squeeze(0)
+        p_img = F.interpolate(p_img.unsqueeze(0), self.image_size).squeeze(0)
+        n_img = F.interpolate(n_img.unsqueeze(0), self.image_size).squeeze(0)
+
+        return a_img, p_img, n_img

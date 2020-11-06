@@ -25,7 +25,7 @@ def matplotlib_imshow(img, one_channel=False):
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
 
-def train_softmax(dataset_dir, run_name="run1", image_size=None, epochs=30, on_gpu=True, checkpoint_dir="checkpoints", batch_size=24):
+def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30, on_gpu=True, checkpoint_dir="checkpoints", batch_size=24):
     writer = SummaryWriter(f"runs/{run_name}")
     data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
@@ -41,6 +41,9 @@ def train_softmax(dataset_dir, run_name="run1", image_size=None, epochs=30, on_g
     dataloader = DataLoader(train_set, shuffle=True, batch_size=batch_size, num_workers=4)
     test_dataloader = DataLoader(test_set, shuffle=False, batch_size=batch_size, num_workers=4)
     model = FeatureDetectorNet(use_classifier=True)
+    if weights_dir:
+        print(f"Continuing training using weights {weights_dir}")
+        model.load_state_dict(torch.load(weights_dir))
     example_input = None
     for data in dataloader:
         images, labels = data
@@ -54,7 +57,7 @@ def train_softmax(dataset_dir, run_name="run1", image_size=None, epochs=30, on_g
     #     param.requires_grad = False
     #     freeze_index += 1
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005) # 0.001 default
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0005, weight_decay=0.01) # 0.001 default
 
     print(f"Training with {train_length} train images, and {test_length} test images")
     if on_gpu:
