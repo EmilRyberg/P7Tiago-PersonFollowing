@@ -14,12 +14,12 @@ def cb(data):
     global img_id
     # Read a new frame
     current_time = time.time()
-    if current_time - last_write_time <= 1:
+    if current_time - last_write_time <= 0.15:
         return
     last_write_time = current_time
     np_arr = np.fromstring(data.data, np.uint8)
     frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    print("took image")
+    print(f"took image {img_id}")
     cv2.imwrite(f"{current_time}-{img_id}.png", frame)
     img_id += 1
     
