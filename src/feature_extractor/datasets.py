@@ -41,7 +41,7 @@ class ClassificationDataset(Dataset):
 
 
 class TripletDataset(Dataset):
-    def __init__(self, dataset_dir, images_per_class=50, image_size=(336, 120), data_transform=None):
+    def __init__(self, dataset_dir, images_per_class=200, image_size=(336, 120), data_transform=None):
         self.image_folders = glob(dataset_dir + "/*/")
         self.images_grouped_by_class = []
         self.flattened_class_with_images = []
@@ -67,16 +67,18 @@ class TripletDataset(Dataset):
         self.triplets = []
         for id in range(self.num_classes):
             cid, class_images = self.images_grouped_by_class[id]
-            class_images = np.array(class_images)
+            class_images = np.array(class_images).copy()
             other_images = [r[1] for r in self.images_grouped_by_class if r[0] != cid]
             other_images = [item for sub_list in other_images for item in sub_list]
             other_images = np.array(other_images)
             np.random.shuffle(other_images)
             np.random.shuffle(class_images)
             for i in range(self.images_per_class):
-                anchor = class_images[i]
+                anchor = class_images[0]
+                class_images = class_images[1:]
                 positive = np.random.choice(class_images, 1)[0]
-                negative = np.random.choice(other_images, 1)[0]
+                negative = other_images[0]
+                other_images = other_images[1:]
                 #print(f"a: {anchor}, p: {positive}, n: {negative}")
                 self.triplets.append((anchor, positive, negative))
 
