@@ -1,0 +1,5 @@
+copy the cpp files into the ros1_bridge/src folder
+replace the cmakelists.txt one level up
+source ros2 then source ros1
+navigate to ros2 folder
+colcon build --packages-select ros1_bridge --symlink-install
