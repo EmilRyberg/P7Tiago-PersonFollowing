@@ -11,7 +11,6 @@ import os
 
 
 def pad_to_square(img, pad_value):
-    print(f"shape: {img.shape}")
     c, h, w = img.shape
     dim_diff = np.abs(h - w)
     # (upper / left) padding and (lower / right) padding
@@ -48,7 +47,7 @@ if __name__ == "__main__":
         print(f"class: {class_name}")
         class_output_dir = os.path.join(output_dir, class_name)
         if not os.path.isdir(class_output_dir):
-            os.mkdir(class_output_dir)
+            os.makedirs(class_output_dir)
         png_paths = glob(f"{class_folder}*.png")
         jpg_paths = glob(f"{class_folder}*.jpg")
         all_images = []
@@ -57,7 +56,6 @@ if __name__ == "__main__":
         for image_path in all_images:
             img_base_name = os.path.basename(image_path)
             img_name_split = os.path.splitext(img_base_name)
-            img_save_name = os.path.join(class_output_dir, f"{img_name_split[0]}-cropped{img_name_split[1]}")
             cv_img = cv.imread(image_path)
             np_image = cv.cvtColor(cv_img, cv.COLOR_BGR2RGB)
             p_img = transforms.ToTensor()(np_image)
@@ -68,25 +66,38 @@ if __name__ == "__main__":
             results = yolo(p_img)
             detections = non_max_suppression(results, 0.4)
             detections = detections[0]
-            detections = rescale_boxes(detections, 416, np_image.shape[:2])
             if detections is not None:
-                person_det = [det for det in detections if classes[int(det[6])].lower() == "person"]
-                if len(person_det) == 0:
+                detections = rescale_boxes(detections, 416, np_image.shape[:2])
+                person_dets = [det for det in detections if classes[int(det[6])].lower() == "person"]
+                extra_path = os.path.join(class_output_dir, "extra")
+                if len(person_dets) == 0:
                     print("no person in image")
                     continue
-                x1, y1, x2, y2, conf, cls_conf, cls_pred = person_det[0]
-                box_w = x2 - x1
-                box_h = y2 - y1
-                print(person_det[0])
-                ix1 = max(0, int(x1))
-                ix2 = max(0, int(x2))
-                iy1 = max(0, int(y1))
-                iy2 = max(0, int(y2))
-                cropped_img = np.array(np_image[iy1:iy2, ix1:ix2, :])
-                print(square_img.shape)
-                print(cropped_img.shape)
-                cropped_img = cv.cvtColor(cropped_img, cv.COLOR_RGB2BGR)
-                cv.imwrite(img_save_name, cropped_img)
-                print(f"Saving image as {img_save_name}")
+                if len(person_dets) > 1:
+                    print("found more than 1 person in image")
+                    if not os.path.isdir(extra_path):
+                        os.mkdir(extra_path)
+                for i, person_det in enumerate(person_dets):
+                    x1, y1, x2, y2, conf, cls_conf, cls_pred = person_det
+                    box_w = x2 - x1
+                    box_h = y2 - y1
+                    aspect = box_h / box_w
+                    # print(f"aspect: {aspect}")
+                    # if aspect < 1.5:
+                    #     print("aspect ratio below threshold - skipping")
+                    #     continue
+                    #print(person_det[0])
+                    ix1 = max(0, int(x1))
+                    ix2 = max(0, int(x2))
+                    iy1 = max(0, int(y1))
+                    iy2 = max(0, int(y2))
+                    cropped_img = np.array(np_image[iy1:iy2, ix1:ix2, :])
+                    #print(square_img.shape)
+                    #print(cropped_img.shape)
+                    cropped_img = cv.cvtColor(cropped_img, cv.COLOR_RGB2BGR)
+                    img_file_name = f"{img_name_split[0]}-cropped{img_name_split[1]}" if i == 0 else f"{img_name_split[0]}-{i+1}-cropped{img_name_split[1]}"
+                    img_save_name = os.path.join(class_output_dir, img_file_name) if i == 0 else os.path.join(extra_path, img_file_name)
+                    cv.imwrite(img_save_name, cropped_img)
+                    print(f"Saving image as {img_save_name}")
 
     print("Done")
