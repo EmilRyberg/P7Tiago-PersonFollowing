@@ -4,7 +4,7 @@
     <BehaviorTree ID="MainTree">
         <SequenceStar>
             <Control ID="RecoveryNode" name="PatrolAndFindHuman">
-                <Action ID="LookForHuman"/>
+                <Action ID="LookForHuman" name="LookForHumanAction" output="{image}"/>
                 <Control ID="RecoveryNode" name="NavigateRecovery">
                     <Control ID="PipelineSequence" name="NavigateWithReplanning">
                         <Control ID="RateController">
@@ -27,7 +27,7 @@
                     </SequenceStar>
                 </Control>
             </Control>
-            <Condition ID="HumanIsFound"/>
+            <Condition ID="HumanIsFound" name="HumanIsFoundCondition" target="{image}" output="target_pos"/>
             <Control ID="RecoveryNode" name="FollowPersonActions">
                 <Action ID="FollowPerson"/>
                 <Action ID="RefindPerson"/>
