@@ -77,31 +77,25 @@ class TripletDataset(Dataset):
                 anchor = class_images[0]
                 class_images = class_images[1:]
                 positive = np.random.choice(class_images, 1)[0]
-                negative = other_images[0]
-                other_images = other_images[1:]
                 #print(f"a: {anchor}, p: {positive}, n: {negative}")
-                self.triplets.append((anchor, positive, negative))
+                self.triplets.append((cid, anchor, positive))
 
     def __len__(self):
         return len(self.triplets)
 
     def __getitem__(self, idx):
-        a_path, p_path, n_path = self.triplets[idx]
+        cid, a_path, p_path = self.triplets[idx]
         a_img = Image.open(a_path)
         p_img = Image.open(p_path)
-        n_img = Image.open(n_path)
 
         if self.data_transform:
             a_img = self.data_transform(a_img)
             p_img = self.data_transform(p_img)
-            n_img = self.data_transform(n_img)
         else:
             a_img = transforms.ToTensor()(a_img)
             p_img = transforms.ToTensor()(p_img)
-            n_img = transforms.ToTensor()(n_img)
 
         a_img = F.interpolate(a_img.unsqueeze(0), self.image_size).squeeze(0)
         p_img = F.interpolate(p_img.unsqueeze(0), self.image_size).squeeze(0)
-        n_img = F.interpolate(n_img.unsqueeze(0), self.image_size).squeeze(0)
 
-        return a_img, p_img, n_img
+        return cid, a_img, p_img

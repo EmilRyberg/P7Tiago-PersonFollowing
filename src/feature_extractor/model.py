@@ -6,7 +6,7 @@ import numpy as np
 
 
 class FeatureDetectorNet(nn.Module):
-    def __init__(self, backbone=None, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=5):
+    def __init__(self, backbone=None, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=6):
         super(FeatureDetectorNet, self).__init__()
         self.backbone = None
         if backbone:
