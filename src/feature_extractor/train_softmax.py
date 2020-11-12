@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torchvision
 
-from model import FeatureDetectorNet
+from model import FeatureExtractorNet
 from datasets import ClassificationDataset
 from torch.utils.data import DataLoader
 import torch.optim as optim
@@ -41,7 +41,7 @@ def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     train_set, test_set = torch.utils.data.random_split(dataset, [train_length, test_length])
     dataloader = DataLoader(train_set, shuffle=True, batch_size=batch_size, num_workers=4)
     test_dataloader = DataLoader(test_set, shuffle=False, batch_size=batch_size, num_workers=4)
-    model = FeatureDetectorNet(use_classifier=True, freeze_backbone=True)
+    model = FeatureExtractorNet(use_classifier=True, freeze_backbone=True)
     if not os.path.isdir(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     if weights_dir:

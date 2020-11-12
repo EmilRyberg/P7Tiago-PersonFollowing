@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from model import FeatureDetectorNet
+from model import FeatureExtractorNet
 from datasets import TripletDataset
 from torch.utils.data import DataLoader
 import torch.optim as optim
@@ -24,9 +24,8 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     ])
     dataset = TripletDataset(dataset_dir, data_transform=data_transform) if not image_size else \
         TripletDataset(dataset_dir, image_size, data_transform=data_transform)
-    dataset_length = len(dataset)
     dataloader = DataLoader(dataset, shuffle=True, batch_size=batch_size, num_workers=4)
-    model = FeatureDetectorNet(use_classifier=False)
+    model = FeatureExtractorNet(use_classifier=False)
     if weights_dir:
         print(f"Continuing training using weights {weights_dir}")
         model.load_state_dict(torch.load(weights_dir))
@@ -46,7 +45,6 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     if on_gpu:
         model = model.cuda()
     running_loss = 0.0
-    last_loss = 0.0
     mini_batches = 0
     epoch_loss = 0.0
     epoch_mini_batches = 0
@@ -57,7 +55,6 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             if on_gpu:
                 anchor = anchor.cuda()
                 positive = positive.cuda()
-                #negative = negative.cuda()
 
             print("running model")
             optimizer.zero_grad()
@@ -65,18 +62,12 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             anchor_embeddings = F.normalize(anchor_embeddings, p=2) # L2 normalization so embeddings live inside unit hyper-sphere
             positive_embeddings = model(positive)
             positive_embeddings = F.normalize(positive_embeddings, p=2)
-            #negative_embeddings = model(negative)
-            #negative_embeddings = F.normalize(negative_embeddings, p=2)
 
             # resample triplets based on embeddings to train on the hardest negative embeddings
             class_ids_np = class_ids.detach().cpu().data.numpy()
             anchor_embeddings_np = anchor_embeddings.detach().cpu().data.numpy()
             positive_embeddings_np = positive_embeddings.detach().cpu().data.numpy()
-            #negative_embeddings_np = negative_embeddings.detach().cpu().data.numpy()
-            #print("Resampling embeddings")
-            #negative_np = negative.detach().cpu().data.numpy()
             all_images = torch.cat((anchor, positive), dim=0)
-            #print(f"all images: {all_images.shape}")
             negative_indices = resample_triplets(class_ids_np, anchor_embeddings_np, positive_embeddings_np)
             negative_indices_tensor = torch.tensor(negative_indices)
             if on_gpu:
@@ -94,7 +85,6 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             epoch_loss += loss.item()
 
             avg_loss = running_loss
-            last_loss = avg_loss
             print(f"[{epoch + 1}, {i + 1}] loss: {avg_loss:.10f}")
             running_loss = 0.0
             mini_batches += 1

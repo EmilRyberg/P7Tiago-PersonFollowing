@@ -5,15 +5,11 @@ from torchvision.models import mobilenet_v2
 import numpy as np
 
 
-class FeatureDetectorNet(nn.Module):
-    def __init__(self, backbone=None, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=6):
-        super(FeatureDetectorNet, self).__init__()
-        self.backbone = None
-        if backbone:
-            self.backbone = backbone
-        else:
-            mn = mobilenet_v2(True)
-            self.backbone = mn.features
+class FeatureExtractorNet(nn.Module):
+    def __init__(self, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=6):
+        super(FeatureExtractorNet, self).__init__()
+        mn = mobilenet_v2(True)
+        self.backbone = mn.features
         self.bottleneck = nn.Linear(bottleneck_input_size, 128)
         self.classifier = nn.Linear(128, num_classes)
         self.use_classifier = use_classifier

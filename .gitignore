@@ -13,3 +13,5 @@ src/feature_extractor/runs/
 **/dataset*/**/*
 *.pth
 *.weights
+
+*.pyc
