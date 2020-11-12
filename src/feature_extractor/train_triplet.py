@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import random
 
 
-def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30, on_gpu=True, checkpoint_dir="checkpoints_triplet", batch_size=50):
+def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30, on_gpu=True, checkpoint_dir="checkpoints_triplet", batch_size=150):
     writer = SummaryWriter(f"runs/triplet_{run_name}")
     data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
@@ -73,12 +73,15 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             anchor_embeddings_np = anchor_embeddings.detach().cpu().data.numpy()
             positive_embeddings_np = positive_embeddings.detach().cpu().data.numpy()
             #negative_embeddings_np = negative_embeddings.detach().cpu().data.numpy()
-            print("Resampling embeddings")
+            #print("Resampling embeddings")
             #negative_np = negative.detach().cpu().data.numpy()
             all_images = torch.cat((anchor, positive), dim=0)
-            print(f"all images: {all_images.shape}")
-            all_images_np = all_images.detach().cpu().data.numpy()
-            new_negatives = resample_triplets(class_ids_np, anchor_embeddings_np, positive_embeddings_np, all_images_np)
+            #print(f"all images: {all_images.shape}")
+            negative_indices = resample_triplets(class_ids_np, anchor_embeddings_np, positive_embeddings_np)
+            negative_indices_tensor = torch.tensor(negative_indices)
+            if on_gpu:
+                negative_indices_tensor = negative_indices_tensor.cuda()
+            new_negatives = all_images.detach().index_select(0, torch.tensor(negative_indices_tensor))
             if on_gpu:
                 new_negatives = new_negatives.cuda()
             new_negative_embeddings = model(new_negatives)
@@ -111,36 +114,35 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     writer.close()
 
 
-def resample_triplets(class_id_np, anchor_emb, positive_emb, all_images_np, alpha=0.2):
-    new_negatives = []
+def resample_triplets(class_id_np, anchor_emb, positive_emb, alpha=0.2):
+    new_negative_indices = []
     class_id_np_2x = np.tile(np.expand_dims(class_id_np, axis=1), (2, 1))
     all_embeddings_np = np.concatenate((anchor_emb, positive_emb), axis=0)
     for i, (cid, a_emb, p_emb) in enumerate(zip(class_id_np, anchor_emb, positive_emb)):
         pos_dist = np.linalg.norm(a_emb - p_emb)
-        negatives_np, negative_emb = get_all_other_images_and_embeddings(class_id_np_2x,
-                                                                         all_images_np, all_embeddings_np, cid)
-        a_repeat_emb = np.tile(a_emb, (negative_emb.shape[0], 1))
+        original_indices = get_all_other_images_and_embeddings(class_id_np_2x, cid)
+        a_repeat_emb = np.tile(a_emb, (len(original_indices), 1))
+        negative_emb = np.take(all_embeddings_np, original_indices, axis=0)
         neg_dist = np.linalg.norm(a_repeat_emb - negative_emb, axis=1).reshape((-1, 1))
         pos_dist_repeat = np.tile(pos_dist, (negative_emb.shape[0], 1))
         neg_indices, _ = np.nonzero(neg_dist - pos_dist_repeat < alpha)
         if neg_indices.shape[0] == 0:
             #print("WARNING: No embedding distance below alpha, picking random triplets")
-            batch_len = negatives_np.shape[0]
+            batch_len = len(original_indices)
             r_idx = random.randint(0, batch_len-1)
-            new_negatives.append(negatives_np[r_idx])
+            new_negative_indices.append(original_indices[r_idx])
         else:
             np.random.shuffle(neg_indices)
             neg_index = neg_indices[0]
-            new_negatives.append(negatives_np[neg_index])
+            new_negative_indices.append(original_indices[neg_index])
 
-    return torch.from_numpy(np.array(new_negatives))
+    return new_negative_indices
 
 
-def get_all_other_images_and_embeddings(class_ids_np, all_images_np, all_embeddings_np, current_class_id):
-    images = []
-    embeddings = []
-    for cid, image, emb in zip(class_ids_np, all_images_np, all_embeddings_np):
+def get_all_other_images_and_embeddings(class_ids_np, current_class_id):
+    original_indices = []
+
+    for i, cid in enumerate(class_ids_np):
         if cid != current_class_id:
-            embeddings.append(emb)
-            images.append(image)
-    return np.array(images), np.array(embeddings)
+            original_indices.append(i)
+    return original_indices
