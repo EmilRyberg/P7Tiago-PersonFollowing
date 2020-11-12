@@ -33,5 +33,5 @@ class FeatureExtractor:
     def embedding_distance(self, features_1, features_2):
         return np.linalg.norm(features_1 - features_2)
 
-    def is_same_person(self, features_1, features_2, threshold=0.8):
+    def is_same_person(self, features_1, features_2, threshold=1):
         return self.embedding_distance(features_1, features_2) < threshold

@@ -1,8 +1,8 @@
 import torch.nn.functional as F
 import numpy as np
 import torchvision.transforms as transforms
-from yolo.yolo_model import YOLOv3
-from yolo.yolo_utils import non_max_suppression, rescale_boxes, load_classes
+from person_detector.yolo.yolo_model import YOLOv3
+from person_detector.yolo.yolo_utils import non_max_suppression, rescale_boxes, load_classes
 
 
 def pad_to_square(img, pad_value):
@@ -52,3 +52,4 @@ class PersonFinder:
             detections = rescale_boxes(detections, 416, np_image.shape[:2])
             person_dets = [det for det in detections if self.classes[int(det[6])].lower() == "person"]
             return person_dets
+		return []

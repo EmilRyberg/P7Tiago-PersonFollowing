@@ -35,7 +35,7 @@ if __name__ == "__main__":
         img = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
         detections = pf.find_persons(img)
         det_to_person_id = []
-        print(f"Found {len(detections)} persons")
+        #print(f"Found {len(detections)} persons")
         for det in detections:
             cropped_person = pf.crop_bounding_box(img, det)
             features = fe.get_features(cropped_person)
