@@ -5,18 +5,18 @@ from yolo.yolo_utils import load_classes, rescale_boxes
 import cv2 as cv
 
 
-def plot_detections(det_with_person_id, img):
+def plot_detections(det_with_person_ids, img):
     # Rescale boxes to original image
     img_cp = img.copy()
     #classes = load_classes("data/coco.names")
-    if det is None:
+    if det_with_person_ids is None:
         return None
-    detections = rescale_boxes(det, 416, img.shape[:2])
-    unique_labels = detections[:, -1].cpu().unique()
-    n_cls_preds = len(unique_labels)
+    #detections = rescale_boxes(det, 416, img.shape[:2])
+    #unique_labels = detections[:, -1].cpu().unique()
+    #n_cls_preds = len(unique_labels)
 
-    if det is not None:
-        for (x1, y1, x2, y2, conf, cls_conf, cls_pred), pid in detections:
+    if det_with_person_ids is not None:
+        for (x1, y1, x2, y2, conf, cls_conf, cls_pred), pid in det_with_person_ids:
             #print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
             # Create a Rectangle patch
             cv.rectangle(img_cp, (x1, y1), (x2, y2), (255, 0, 0), 2)
@@ -25,7 +25,7 @@ def plot_detections(det_with_person_id, img):
 
 
 if __name__ == "__main__":
-    fe = FeatureExtractor("checkpoints_triplet2/triplet-epoch-19-loss-0.00072.pth")
+    fe = FeatureExtractor("triplet_weights.pth")
     pf = PersonFinder("yolov3.weights", "data/coco.names")
 
     cap = cv.VideoCapture(0)
@@ -49,7 +49,7 @@ if __name__ == "__main__":
                 found_same_person = False
                 for pid, emb in embeddings:
                     distance = fe.embedding_distance(features, emb)
-                    print(f"Distance: {distance}")
+                    #print(f"Distance: {distance}")
                     is_same_person = fe.is_same_person(features, emb)
                     if is_same_person:
                         found_same_person = True
