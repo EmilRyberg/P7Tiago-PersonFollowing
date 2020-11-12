@@ -1,7 +1,5 @@
-import torch
-from feature_extractor import FeatureExtractor
-from person_finder import PersonFinder
-from yolo.yolo_utils import load_classes, rescale_boxes
+from person_detector.feature_extractor_module.feature_extractor import FeatureExtractor
+from person_detector.person_finder import PersonFinder
 import cv2 as cv
 
 

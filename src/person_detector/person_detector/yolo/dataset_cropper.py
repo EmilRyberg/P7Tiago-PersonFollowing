@@ -3,8 +3,8 @@ import torch.nn.functional as F
 import numpy as np
 import torchvision.transforms as transforms
 import cv2 as cv
-from yolo_model import YOLOv3
-from yolo_utils import non_max_suppression, rescale_boxes, load_classes
+from person_detector.yolo.yolo_model import YOLOv3
+from person_detector.yolo.yolo_utils import non_max_suppression, rescale_boxes, load_classes
 import argparse
 from glob import glob
 import os

@@ -1,4 +1,4 @@
-from model import FeatureExtractorNet
+from person_detector.feature_extractor_module.model import FeatureExtractorNet
 import torch
 import torch.nn.functional as F
 from torchvision.transforms import transforms

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from yolo_utils import build_targets, to_cpu
+from person_detector.yolo.yolo_utils import build_targets, to_cpu
 
 
 class Darknet53(nn.Module):

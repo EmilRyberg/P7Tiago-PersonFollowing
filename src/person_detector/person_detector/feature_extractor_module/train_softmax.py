@@ -1,13 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torchvision
 
-from model import FeatureExtractorNet
-from datasets import ClassificationDataset
+from person_detector.feature_extractor_module.model import FeatureExtractorNet
+from person_detector.feature_extractor_module.datasets import ClassificationDataset
 from torch.utils.data import DataLoader
-import torch.optim as optim
-from torchvision import transforms, datasets
+from torchvision import transforms
 import os
 import math
 from torch.utils.tensorboard import SummaryWriter

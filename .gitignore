@@ -15,3 +15,5 @@ src/feature_extractor/runs/
 *.weights
 
 *.pyc
+
+.idea/
