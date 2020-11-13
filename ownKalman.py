@@ -1,0 +1,113 @@
+import numpy as np
+from numpy import dot, zeros, eye
+
+np.set_printoptions(suppress=True)
+
+# Must do track() before adding new filters! 
+class KfTracker:
+    # Variables related to the state
+    x = np.array([[0], [0], [0], [0]])
+    P = np.eye(4) * 1000.
+
+    # Time last batch of measurements were received
+    prevTime = 0
+    
+    # The dynamics matrix. [0, 2] and [1, 3] will be replaced by dt (sampling period)
+    F = np.array([[1., 0., 1., 0.],
+                  [0., 1., 0., 1.],
+                  [0., 0., 1., 0.],
+                  [0., 0., 0., 1.]])
+
+    # The measurement matrix
+    H = np.array([[1., 0., 0., 0.],
+                  [0., 1., 0., 0.]])
+    
+    # Just preallocated
+    _I = eye(4)
+
+    # Used for adding the noise variances
+    r = 5.
+    q = 0
+    R = np.eye(2) * r
+    Q_base = _I * q
+
+    def __init__(self, mPos, timeStamp): 
+        self.prevTime = timeStamp
+
+        self.x = np.array([[mPos[0]], [mPos[1]], [0], [0]])
+        self.P = np.eye(4) * 1000.
+
+    # mPos is a list of numpy arrays containing the x and y of each element
+    def track(self, mPos, timeStamp): # list(np.array([x, y])) as input for mPos, and timeStamp of picture
+        self.predict(timeStamp)
+
+        if not np.isnan(mPos[0]):
+            self.update(mPos)
+            return False
+        
+        return True
+
+
+    def predict(self, timeStamp):
+        dt = timeStamp - self.prevTime
+        self.prevTime = timeStamp
+        self.F[0, 2] = dt
+        self.F[1, 3] = dt
+
+        # x = Fx
+        self.x = dot(self.F, self.x)
+
+        Q = self.Q_base * dt
+
+        # P = FPF' + Q
+        self.P = dot(dot(self.F, self.P), self.F.T) + Q
+
+
+    def update(self, z):
+        # y = z - Hx
+        # error (residual) between measurement and prediction
+        y = z - dot(self.H, self.x)
+
+        # S = HPH' + R
+        # project system uncertainty into measurement space
+        PHT = dot(self.P, self.H.T) # Written here for optimization, used twice
+        S = dot(self.H, PHT) + self.R
+        # K = PH'inv(S)
+        K = dot(PHT, np.linalg.inv(S))
+
+        # x = x + Ky
+        self.x += dot(K, y)
+
+        # P = (I-KH)P
+        #self.kf[i].P = dot(self._I - dot(K, self.H), self.kf[i].P) 
+        # The quation below is supposed to be more numerically stable, but more expensive
+        # P = (I-KH)P(I-KH)' + KRK'
+        I_KH = self._I - dot(K, self.H)
+        self.P = dot(dot(I_KH, self.P), I_KH.T) + dot(dot(K, self.R), K.T) 
+
+
+
+mPos = np.array([0, 0])
+kf = KfTracker(mPos, 0)
+
+print(kf.x)
+
+k = 0
+t = 0
+
+for i in range(10):
+    k = i
+    t = i
+    mPos = np.array([[k*2], [k]])
+    kf.track(mPos, t * 0.5)
+    print("state 1:")
+    print(kf.x)
+    print(mPos)
+
+for i in range(10):
+    t += 1
+    mPos = np.array([[k*2], [k]])
+    kf.track(mPos, t)
+    print("state 2:")
+    print(kf.x)
+    print(mPos)
