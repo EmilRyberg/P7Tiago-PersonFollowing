@@ -1,5 +1,5 @@
-from person_detector.feature_extractor_module.feature_extractor import FeatureExtractor
-from person_detector.person_finder import PersonFinder
+from feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
+from person_finder.person_finder import PersonFinder
 import cv2 as cv
 
 
@@ -46,9 +46,9 @@ if __name__ == "__main__":
             else:
                 found_same_person = False
                 for pid, emb in embeddings:
-                    distance = fe.embedding_distance(features, emb)
+                    distance = embedding_distance(features, emb)
                     #print(f"Distance: {distance}")
-                    is_same_person = fe.is_same_person(features, emb)
+                    is_same_person = is_same_person(features, emb)
                     if is_same_person:
                         found_same_person = True
                         det_to_person_id.append((det, pid))

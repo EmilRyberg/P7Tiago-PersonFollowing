@@ -1,32 +1,96 @@
 import rclpy
 from rclpy.node import Node
-from rcl_interfaces.msg import ParameterType
-from sensor_msgs.msg import CompressedImage
-from person_follower_interfaces.msg import PersonInfo, PersonInfoList
-import numpy
-import torch
+from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from sensor_msgs.msg import CompressedImage, Image
 import os
 from cv_bridge import CvBridge
-from person_detector.feature_extractor_module.feature_extractor import FeatureExtractor
-
-from std_msgs.msg import String
+from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
+from person_detector.person_finder.person_finder import PersonFinder
 
 
 class PersonDetector(Node):
     def __init__(self):
         super().__init__("person_detector")
         self.declare_parameter("feature_weights_path")
+        self.declare_parameter("yolo_weights_path")
+        self.declare_parameter("yolo_names_path")
+        self.declare_parameter("on_gpu", value=True)
+        qos_profile=QoSProfile(depth=1)
+        qos_profile.reliability = QoSReliabilityPolicy.BEST_EFFORT
+        qos_profile.history = QoSHistoryPolicy.KEEP_LAST
         feature_weights_path = self.get_parameter("feature_weights_path").get_parameter_value().string_value
         feature_weights_path = os.path.expanduser(feature_weights_path)
+        yolo_weights_path = self.get_parameter("yolo_weights_path").get_parameter_value().string_value
+        yolo_weights_path = os.path.expanduser(yolo_weights_path)
+        yolo_names_path = self.get_parameter("yolo_names_path").get_parameter_value().string_value
+        yolo_names_path = os.path.expanduser(yolo_names_path)
+        on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
         self.image_subscriber = self.create_subscription(CompressedImage,
-                                                         "/xtion/rgb/image_raw/compressed",
+                                                         "/compressed_images",
                                                          self.image_callback,
-                                                         1)
-        self.fe = FeatureExtractor(feature_weights_path, on_gpu=False)
+                                                         qos_profile)
+        self.depth_subscriber = self.create_subscription(Image,
+                                                         "/depth",
+                                                         self.depth_callback,
+                                                         qos_profile)
+        self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
+        self.person_finder = PersonFinder(yolo_weights_path, yolo_names_path, on_gpu=on_gpu)
         self.cv_bridge = CvBridge()
+        self.image = None
+        self.depth_image = None
+        self.image_stamp = None
+        self.depth_stamp = None
+        self.image_is_updated = False
+        self.depth_is_updated = False
+        self.get_logger().info(f"init")
 
-    def image_callback(self, msg):
-        image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        self.person_features_mapping = []
+        self.person_id = 0
+
+    def image_callback(self, msg: CompressedImage):
+        self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        self.image_stamp = msg.header.stamp
+        self.image_is_updated = True
+        self.got_image_callback()
+
+    def depth_callback(self, msg: Image):
+        self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        #self.get_logger().info(f"got depth image {self.depth_image.shape}")
+        self.depth_stamp = msg.header.stamp
+        self.depth_is_updated = True
+        self.got_image_callback()
+
+    def got_image_callback(self):
+        if not self.image_is_updated or not self.depth_is_updated:
+            return
+        self.image_is_updated = False
+        self.depth_is_updated = False
+
+        person_detections = self.person_finder.find_persons(self.image)
+        person_detection_mapping = []
+        for person_detection in person_detections:
+            cropped_person_img = self.person_finder.crop_bounding_box(self.image, person_detection)
+            features = self.feature_extractor.get_features(cropped_person_img)
+            if len(self.person_features_mapping) == 0:
+                self.person_features_mapping.append((self.person_id, features))
+                person_detection_mapping.append((self.person_id, person_detection))
+                self.person_id += 1
+            else:
+                found_same_person = False
+                for pid, emb in self.person_features_mapping:
+                    distance = embedding_distance(features, emb)
+                    # print(f"Distance: {distance}")
+                    same_person = is_same_person(features, emb, threshold=1.2)
+                    if same_person:
+                        found_same_person = True
+                        person_detection_mapping.append((pid, person_detection))
+                if not found_same_person:
+                    self.person_features_mapping.append((self.person_id, features))
+                    person_detection_mapping.append((self.person_id, person_detection))
+                    self.person_id += 1
+
+        # TODO transform to world coordinates and publish
+
 
 def main(args=None):
     rclpy.init(args=args)
