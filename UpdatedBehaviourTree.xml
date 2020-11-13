@@ -1,0 +1,139 @@
+<?xml version="1.0"?>
+<root main_tree_to_execute="BehaviorTree">
+    <!-- ////////// -->
+    <BehaviorTree ID="BehaviorTree">
+        <Fallback>
+            <Condition ID="isDone"/>
+            <Sequence>
+                <Condition ID="isFirstRun" first_run_flag="${first_run_flag}"/>
+                <Action ID="findHuman" current_id="${current_id}" first_run_set_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
+            </Sequence>
+            <Sequence>
+                <Condition ID="isHumanFound" found_flag="${found_flag}"/>
+                <SubTree ID="NavigationWithRecovery"/>
+                <Action ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
+            </Sequence>
+            <Sequence>
+                <Fallback>
+                    <Condition ID="hasMovedToLastPosition" moved_flag="${moved_flag}"/>
+                    <Action ID="MoveToLastPosition" set_moved_flag="${moved_flag}"/>
+                </Fallback>
+                <Action ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
+            </Sequence>
+        </Fallback>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <BehaviorTree ID="NavigationWithRecovery">
+        <Control ID="RecoveryNode" name="NavigateRecovery" number_of_retries="1">
+            <Control ID="PipelineSequence">
+                <Action ID="ComputeGoal" current_id="${current_id}" goal="${goal}" person_info="${person_info}"/>
+                <Decorator ID="RateController" hz="10">
+                    <Control ID="RecoveryNode" name="ComputePathToPose" number_of_retries="5">
+                        <Action ID="ComputePathToPose" goal="${person_info}" path="${path}" planner_id="1"/>
+                        <Action ID="ClearEntireCostmap" service_name="${global_cost_map}"/>
+                    </Control>
+                </Decorator>
+                <Control ID="RecoveryNode" number_of_retries="5">
+                    <Action ID="FollowPath" controller_id="FollowPath" path="${path}"/>
+                    <Action ID="ClearEntireCostmap" service_name="${local_cost_map}"/>
+                </Control>
+            </Control>
+            <SequenceStar name="RecoveryActions">
+                <Action ID="RecoveryLogger"/>
+                <Action ID="ClearEntireCostmap" name="ClearLocalCostmap" service_name="${local_cost_map}"/>
+                <Action ID="ClearEntireCostmap" name="ClearGlobalCostmap" service_name="${global_cost_map}"/>
+                <Action ID="Spin" spin_dist="${spin_dist}"/>
+                <Action ID="Wait" wait_duration="${wait_duration}"/>
+            </SequenceStar>
+        </Control>
+    </BehaviorTree>
+    <!-- ////////// -->
+    <TreeNodesModel>
+        <Action ID="BackUp">
+            <input_port name="backup_dist">Distance to backup</input_port>
+            <input_port name="backup_speed">Speed at which to backup</input_port>
+        </Action>
+        <Action ID="ClearEntireCostmap">
+            <input_port name="service_name">Service name</input_port>
+        </Action>
+        <Action ID="ComputeGoal">
+            <input_port name="current_id"/>
+            <output_port name="goal"/>
+            <input_port name="person_info"/>
+        </Action>
+        <Action ID="ComputePathToPose">
+            <input_port name="goal">Destination to plan to</input_port>
+            <output_port name="path">Path created by ComputePathToPose node</output_port>
+            <input_port name="planner_id"/>
+        </Action>
+        <Decorator ID="DistanceController">
+            <input_port name="distance">Distance</input_port>
+        </Decorator>
+        <Action ID="FollowPath">
+            <input_port default="FollowPath" name="controller_id"/>
+            <input_port name="path">Path to follow</input_port>
+        </Action>
+        <Condition ID="GoalReached">
+            <input_port name="goal">Destination</input_port>
+        </Condition>
+        <Condition ID="IsStuck"/>
+        <Action ID="MoveToLastPosition">
+            <output_port name="set_moved_flag"/>
+        </Action>
+        <Action ID="NavigateToPose">
+            <input_port name="orientation">Orientation</input_port>
+            <input_port name="position">Position</input_port>
+        </Action>
+        <SubTree ID="NavigationWithRecovery"/>
+        <Control ID="PipelineSequence"/>
+        <Action ID="RandomCrawl"/>
+        <Decorator ID="RateController">
+            <input_port name="hz">Rate</input_port>
+        </Decorator>
+        <Action ID="RecoveryLogger"/>
+        <Control ID="RecoveryNode">
+            <input_port name="number_of_retries">Number of retries</input_port>
+        </Control>
+        <Control ID="RoundRobin"/>
+        <Decorator ID="SpeedController">
+            <input_port name="filter_duration">Duration (secs) for velocity smoothing filter</input_port>
+            <input_port name="max_rate">Maximum rate</input_port>
+            <input_port name="max_speed">Maximum speed</input_port>
+            <input_port name="min_rate">Minimum rate</input_port>
+            <input_port name="min_speed">Minimum speed</input_port>
+        </Decorator>
+        <Action ID="Spin">
+            <input_port name="spin_dist">Spin distance</input_port>
+        </Action>
+        <Condition ID="TransformAvailable">
+            <input_port name="child">Child frame for transform</input_port>
+            <input_port name="parent">Parent frame for transform</input_port>
+        </Condition>
+        <Action ID="Wait">
+            <input_port name="wait_duration">Wait time</input_port>
+        </Action>
+        <Action ID="findHuman">
+            <output_port name="current_id"/>
+            <output_port name="first_run_set_flag"/>
+            <output_port name="found"/>
+            <output_port name="person_info"/>
+        </Action>
+        <Action ID="findSameHuman">
+            <input_port name="current_id"/>
+            <output_port name="found"/>
+            <output_port name="person_info"/>
+        </Action>
+        <Condition ID="hasMovedToLastPosition">
+            <input_port name="moved_flag"/>
+        </Condition>
+        <Condition ID="isDone"/>
+        <Condition ID="isFirstRun">
+            <input_port default="0" name="first_run_flag"/>
+        </Condition>
+        <Condition ID="isHumanFound">
+            <input_port name="found_flag"/>
+        </Condition>
+    </TreeNodesModel>
+    <!-- ////////// -->
+</root>
+
