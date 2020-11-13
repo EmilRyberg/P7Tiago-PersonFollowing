@@ -16,7 +16,10 @@
             <Sequence>
                 <Fallback>
                     <Condition ID="hasMovedToLastPosition" moved_flag="${moved_flag}"/>
-                    <Action ID="MoveToLastPosition" set_moved_flag="${moved_flag}"/>
+                    <Sequence name="">
+                        <SubTree ID="NavigationWithRecovery"/>
+                        <SetBlackboard name="" output_key="${moved_flag}" value="true"/>
+                    </Sequence>
                 </Fallback>
                 <Action ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
@@ -24,26 +27,25 @@
     </BehaviorTree>
     <!-- ////////// -->
     <BehaviorTree ID="NavigationWithRecovery">
-        <Control ID="RecoveryNode" name="NavigateRecovery" number_of_retries="1">
-            <Control ID="PipelineSequence">
-                <Action ID="ComputeGoal" current_id="${current_id}" goal="${goal}" person_info="${person_info}"/>
-                <Decorator ID="RateController" hz="10">
-                    <Control ID="RecoveryNode" name="ComputePathToPose" number_of_retries="5">
-                        <Action ID="ComputePathToPose" goal="${person_info}" path="${path}" planner_id="1"/>
-                        <Action ID="ClearEntireCostmap" service_name="${global_cost_map}"/>
+        <Control ID="RecoveryNode" name="NavigateRecovery" number_of_retries="6">
+            <Control ID="PipelineSequence" name="NavigateWithReplanning">
+                <Decorator ID="RateController" hz="1.0">
+                    <Control ID="RecoveryNode" name="ComputePathToPose" number_of_retries="1">
+                        <Action ID="ComputePathToPose" goal="{goal}" path="{path}" planner_id="GridBased"/>
+                        <Action ID="ClearEntireCostmap" service_name="global_costmap/clear_entirely_global_costmap"/>
                     </Control>
                 </Decorator>
-                <Control ID="RecoveryNode" number_of_retries="5">
-                    <Action ID="FollowPath" controller_id="FollowPath" path="${path}"/>
-                    <Action ID="ClearEntireCostmap" service_name="${local_cost_map}"/>
+                <Control ID="RecoveryNode" name="FollowPath" number_of_retries="1">
+                    <Action ID="FollowPath" controller_id="FollowPath" path="{path}"/>
+                    <Action ID="ClearEntireCostmap" service_name="local_costmap/clear_entirely_local_costmap"/>
                 </Control>
             </Control>
             <SequenceStar name="RecoveryActions">
                 <Action ID="RecoveryLogger"/>
-                <Action ID="ClearEntireCostmap" name="ClearLocalCostmap" service_name="${local_cost_map}"/>
-                <Action ID="ClearEntireCostmap" name="ClearGlobalCostmap" service_name="${global_cost_map}"/>
-                <Action ID="Spin" spin_dist="${spin_dist}"/>
-                <Action ID="Wait" wait_duration="${wait_duration}"/>
+                <Action ID="ClearEntireCostmap" service_name="local_costmap/clear_entirely_local_costmap"/>
+                <Action ID="ClearEntireCostmap" service_name="global_costmap/clear_entirely_global_costmap"/>
+                <Action ID="Spin" spin_dist="1.57"/>
+                <Action ID="Wait" wait_duration="5"/>
             </SequenceStar>
         </Control>
     </BehaviorTree>
