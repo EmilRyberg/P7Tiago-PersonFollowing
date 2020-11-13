@@ -9,16 +9,6 @@
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 
-//leftover from the string splitter
-struct PersonInfo 
-{ 
-  string ID;
-  float x;
-  float y;
-  float dx;
-  float dy;
-};
-
 namespace tiago_follow_person
 {
     class FindHumanAction : public BtActionNode<nav2_msgs::action::FindHuman>
@@ -38,19 +28,24 @@ namespace tiago_follow_person
         void on_aborted() override;
 
         void on_cancelled() override;
-
-        PersonInfo converFromString(StringView str);
-
+        
         // Any BT node that accepts parameters must provide a requiredNodeParameters method
         static PortsList providedPorts()
         {
             return providedBasicPorts(
             {
-                OutputPort<string>("current_id");
+                OutputPort<int32>("current_id");
                 OutputPort<int>("found_flag");
-                OutputPort<PersonInfo>("person_info");
+                OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
             });
         }
+
+        // prolly this this part wrong because i am a dumbass
+        private:
+        int32 look_for_id;
+        int32 person_id;
+        nav_msgs::msg::PoseStamped pose;
+
     };
 }
 #endif  // PERSON_FOLLOW_LOOK_FOR_HUMAN_ACTION_HPP_

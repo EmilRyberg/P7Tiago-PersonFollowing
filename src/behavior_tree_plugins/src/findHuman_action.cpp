@@ -7,61 +7,50 @@
 
 namespace tiago_person_following
 {
-
   FindHumanAction::FindHumanAction(
     const std::string & xml_tag_name,
     const std::string & action_name,
     const BT::NodeConfiguration & config)
      : BtActionNode<nav2_msgs::action::FindHuman>(xml_tag_name, action_name, conf)
   {
-    config.blackboard->set("found_flag", false)
+    look_for_id = -1; //i.e. dont look for a specific ID, but look and track a human and return with the ID
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
-    data = FindHumanAction::converFromString(this)
-
-    setOutput("current_id", data.ID);
-    setOutput("person_info", data);
-    setOutout("found_flag", 1);
-    return NodeStatus::SUCCESS;
+    goal_ = look_for_id  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
   }  
 
+  //code that runs when waiting for result
   void FindHumanAction::on_wait_for_results()
   {
-
   }
 
+  //code that runs when the action server returns a success result
   void FindHumanAction::on_success()
   {
-    
+    RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
+
+    pose = result_.pose
+    person_id = result_.person_id
+
+    setOutput("current_id", person_id);
+    setOutput("person_info", pose);
+    setOutout("found_flag", true);
+    return NodeStatus::SUCCESS;
   }
 
+  //code that runs when the action server returns an aborted result
   void FindHumanAction::on_aborted()
   {
-    
+    RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
   }
 
+  //code that runs when the actions server returns a cancelled result
   void FindHumanAction::on_cancelled()
   {
-    
+    RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
   }
-
-  // this is probably a redundant and not working function
-  // made to split up the incoming response from the action server, if it was a string
-  PersonInfo FindHumanAction::convertFromString(StringView str)
-    {
-      // We expect real numbers separated by semicolons
-      auto parts = splitString(str, ',');
-
-      PersonInfo output;
-      output.ID = convertFromString<string>(parts[0]);
-      output.x = convertFromString<float>(parts[2]);
-      output.y = convertFromString<float>(parts[3]);
-      output.dx = convertFromString<float>(parts[4]);
-      output.dy = convertFromString<float>(parts[5]);
-      return output;
-    }
 }
 
 #include "behaviortree_cpp_v3/bt_factory.h"
