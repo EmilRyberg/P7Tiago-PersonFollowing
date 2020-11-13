@@ -3,27 +3,28 @@
 #include "behavior_tree_plugins/is_human_found.hpp"
 #include <string>
 
+//Not done yet
 namespace tiago_person_following
 {
-  IsHumanFoundCondition::IsHumanFoundCondition(
+  IsFirstRunCondition::IsFirstRunCondition(
   const std::string& condition_name,
   const BT::NodeConfiguration& conf) : BT::ConditionNode(condition_name, conf)
   {
     //Might need to be some initializing at some point here.
   }
 
-  BT::NodeStatus IsHumanFoundCondition::on_tick()
+  BT::NodeStatus IsFirstRunCondition::on_tick()
   {
-    is_human_found_ = getInput("found_flag")
+    is_human_found_ = getInput("is_first_run")
 
     if(is_human_found_)
     {
-      RCLCPP_INFO(node_->get_logger(), "Human was found");
+      RCLCPP_INFO(node_->get_logger(), "This is the first run");
       return NodesStatus::SUCCES;
     }
     else
     {
-      RCLCPP_INFO(node_->get_logger(), "Human was not found");
+      RCLCPP_INFO(node_->get_logger(), "This is not the first run");
       return NodeStatus::FAILURE;
     }
   }
@@ -32,5 +33,5 @@ namespace tiago_person_following
 #include "behaviortree_cpp_v3/bt_factory.h"
 BT_REGISTER_NODES(factory)
 {
-  factory.registerNodeType<nav2_behavior_tree::IsHumanFoundCondition>("IsHumanFound");  //update when we know the real path
+  factory.registerNodeType<nav2_behavior_tree::IsFirstRunCondition>("IsFirstRun");  //update when we know the real path
 }
