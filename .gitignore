@@ -4,6 +4,18 @@
 **/install/**/*
 **/log/**/*
 
-.idea/
-venv
+src/feature_extractor/.idea/
+
+*.pb
+
+src/feature_extractor/__pycache__/
+src/feature_extractor/runs/
+**/dataset*/**/*
+*.pth
+*.weights
+
 *.pyc
+
+.idea/
+
+venv
