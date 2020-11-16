@@ -1,8 +1,16 @@
-from person_detector.feature_extractor_module.model import FeatureExtractorNet
+from person_detector.feature_extractor.model import FeatureExtractorNet
 import torch
 import torch.nn.functional as F
 from torchvision.transforms import transforms
 import numpy as np
+
+
+def embedding_distance(features_1, features_2):
+    return np.linalg.norm(features_1 - features_2)
+
+
+def is_same_person(features_1, features_2, threshold=1):
+    return embedding_distance(features_1, features_2) < threshold
 
 
 class FeatureExtractor:
@@ -29,9 +37,3 @@ class FeatureExtractor:
         features = F.normalize(features, p=2)
         features_np = features.detach().cpu().data.numpy()
         return features_np
-
-    def embedding_distance(self, features_1, features_2):
-        return np.linalg.norm(features_1 - features_2)
-
-    def is_same_person(self, features_1, features_2, threshold=1):
-        return self.embedding_distance(features_1, features_2) < threshold

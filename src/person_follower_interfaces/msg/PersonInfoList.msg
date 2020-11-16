@@ -1,3 +1,2 @@
-builtin_interfaces/Time timestamp
-
+std_msgs/Header header
 PersonInfo[] persons

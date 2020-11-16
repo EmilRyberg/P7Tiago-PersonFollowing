@@ -14,7 +14,8 @@ setup(
     install_requires=['setuptools',
                         'torch',
                         'torchvision',
-                        'opencv-python'],
+                        'opencv-python',
+                        'numpy'],
     zip_safe=True,
     maintainer='emil',
     maintainer_email='emil@todo.todo',
@@ -23,7 +24,8 @@ setup(
     tests_require=[],
     entry_points={
         'console_scripts': [
-            'person_detector = person_detector.person_detector_node:main'
+            'person_detector = person_detector.person_detector_node:main',
+            'person_detector_test = person_detector.person_detector_test_node:main'
         ],
     },
 )

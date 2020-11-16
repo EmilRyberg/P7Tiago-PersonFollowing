@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from person_detector.feature_extractor_module.model import FeatureExtractorNet
-from person_detector.feature_extractor_module.datasets import ClassificationDataset
+from person_detector.feature_extractor.model import FeatureExtractorNet
+from person_detector.feature_extractor.datasets import ClassificationDataset
 from torch.utils.data import DataLoader
 from torchvision import transforms
 import os
