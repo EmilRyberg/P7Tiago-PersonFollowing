@@ -3,3 +3,8 @@
 **/build/**/*
 **/install/**/*
 **/log/**/*
+
+
+.metadata/
+
+.project
