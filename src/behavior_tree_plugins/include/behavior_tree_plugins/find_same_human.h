@@ -11,10 +11,10 @@
 
 namespace tiago_follow_person
 {
-    class FindHumanAction : public BtActionNode<nav2_msgs::action::FindHuman>
+    class FindSameHumanAction : public BtActionNode<nav2_msgs::action::FindSameHuman>
     {
         public:
-        FindHumanAction(
+        FindSameHumanAction(
             const std::string& xml_tag_name,
             const std::string & action_name,
             const BT::NodeConfiguration& config);
@@ -34,15 +34,14 @@ namespace tiago_follow_person
         {
             return providedBasicPorts(
             {
-                OutputPort<int32>("current_id");
-                OutputPort<int>("found_flag");
-                OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
+                BT::InputPort<int32>("current_id");
+                BT::OutputPort<int>("found_flag");
+                BT::OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
             });
         }
 
         // prolly this this part wrong because i am a dumbass
         private:
-        int32 look_for_id;
         int32 person_id;
         nav_msgs::msg::PoseStamped pose;
 

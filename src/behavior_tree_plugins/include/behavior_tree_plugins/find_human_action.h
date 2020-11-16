@@ -34,14 +34,15 @@ namespace tiago_follow_person
         {
             return providedBasicPorts(
             {
-                InputPort<int32>("current_id");
-                OutputPort<int>("found_flag");
-                OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
+                BT::OutputPort<int32>("current_id");
+                BT::OutputPort<int>("found_flag");
+                BT::OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
             });
         }
 
         // prolly this this part wrong because i am a dumbass
         private:
+        int32 look_for_id;
         int32 person_id;
         nav_msgs::msg::PoseStamped pose;
 

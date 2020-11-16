@@ -1,20 +1,23 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "behavior_tree_plugins/is_human_found.hpp"
 #include <string>
+#include "behavior_tree_plugins/is_human_found_condition.h"
+#include "behaviortree_cpp_v3/bt_factory.h"
+
 
 namespace tiago_person_following
 {
   IsHumanFoundCondition::IsHumanFoundCondition(
   const std::string& condition_name,
-  const BT::NodeConfiguration& conf) : BT::ConditionNode(condition_name, conf)
+  const BT::NodeConfiguration& conf) 
+  : BT::ConditionNode(condition_name, conf)
   {
     //Might need to be some initializing at some point here.
   }
 
-  BT::NodeStatus IsHumanFoundCondition::on_tick()
+  BT::NodeStatus IsHumanFoundCondition::tick()
   {
-    is_human_found_ = getInput("found_flag")
+    getInput("found_flag", is_human_found_);
 
     if(is_human_found_)
     {
@@ -29,7 +32,6 @@ namespace tiago_person_following
   }
 }
 
-#include "behaviortree_cpp_v3/bt_factory.h"
 BT_REGISTER_NODES(factory)
 {
   factory.registerNodeType<nav2_behavior_tree::IsHumanFoundCondition>("IsHumanFound");  //update when we know the real path

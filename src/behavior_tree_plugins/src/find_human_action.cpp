@@ -1,9 +1,10 @@
 #include <string>
 #include <memory>
 #include <cmath>
+#include "behavior_tree_plugins/find_human_action.h"
 
 #include "nav2_behavior_tree/bt_action_node.hpp"
-#include "person_follower_interfaces/msg/PersonInfo.msg"
+//#include "person_follower_interfaces/msg/PersonInfo.msg"
 
 namespace tiago_person_following
 {
@@ -34,9 +35,9 @@ namespace tiago_person_following
     pose = result_.pose
     person_id = result_.person_id
 
-    setOutput("current_id", person_id);
-    setOutput("person_info", pose);
-    setOutout("found_flag", true);
+    BT::setOutput("current_id", person_id);
+    BT::setOutput("person_info", pose);
+    BT::setOutout("found_flag", true);
     return NodeStatus::SUCCESS;
   }
 

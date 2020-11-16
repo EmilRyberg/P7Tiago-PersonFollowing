@@ -1,32 +1,33 @@
 #include <string>
 #include <memory>
 #include <cmath>
+#include "behavior_tree_plugins/find_same_human.h"
 
 #include "nav2_behavior_tree/bt_action_node.hpp"
-#include "person_follower_interfaces/msg/PersonInfo.msg"
+//#include "person_follower_interfaces/msg/PersonInfo.msg"
 
 namespace tiago_person_following
 {
-  FindHumanAction::FindHumanAction(
+  FindSameHumanAction::FindSameHumanAction(
     const std::string & xml_tag_name,
     const std::string & action_name,
     const BT::NodeConfiguration & config)
-     : BtActionNode<nav2_msgs::action::FindHuman>(xml_tag_name, action_name, conf)
+     : BtActionNode<nav2_msgs::action::FindSameHuman>(xml_tag_name, action_name, conf)
   {
-    getInput("current_id", goal_);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
+    BT::getInput("current_id", goal_);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
   }
 
-  void FindHumanAction::on_tick() //what the node has to do everyime it runs
+  void FindSameHumanAction::on_tick() //what the node has to do everyime it runs
   {
   }  
 
   //code that runs when waiting for result
-  void FindHumanAction::on_wait_for_results()
+  void FindSameHumanAction::on_wait_for_results()
   {
   }
 
   //code that runs when the action server returns a success result
-  void FindHumanAction::on_success()
+  void FindSameHumanAction::on_success()
   {
     if(result_.person_id != goal_)
     {
@@ -38,19 +39,19 @@ namespace tiago_person_following
     RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
 
     pose = result_.pose
-    setOutput("person_info", pose);
-    setOutout("found_flag", true);
+    BT::setOutput("person_info", pose);
+    BT::setOutout("found_flag", true);
     return NodeStatus::SUCCESS;
   }
 
   //code that runs when the action server returns an aborted result
-  void FindHumanAction::on_aborted()
+  void FindSameHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
   }
 
   //code that runs when the actions server returns a cancelled result
-  void FindHumanAction::on_cancelled()
+  void FindSameHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
   }
@@ -62,10 +63,10 @@ BT_REGISTER_NODES(factory)
   BT::NodeBuilder builder =
     [](const std::string & name, const BT::NodeConfiguration & config)
     {
-      return std::make_unique<nav2_behavior_tree::FindHumanAction>(
-        name, "find_human", config);
+      return std::make_unique<nav2_behavior_tree::FindSameHumanAction>(
+        name, "find_same_human", config);
     };
 
-  factory.registerBuilder<nav2_behavior_tree::FindHumanAction>(
-    "FindHuman", builder);
+  factory.registerBuilder<nav2_behavior_tree::FindSameHumanAction>(
+    "FindSameHuman", builder);
 }

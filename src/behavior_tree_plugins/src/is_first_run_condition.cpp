@@ -1,7 +1,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "behavior_tree_plugins/is_human_found.hpp"
 #include <string>
+#include "behavior_tree_plugins/is_first_run_condition.h"
+#include "behaviortree_cpp_v3/bt_factory.h"
+
 
 //Not done yet
 namespace tiago_person_following
@@ -13,11 +15,11 @@ namespace tiago_person_following
     //Might need to be some initializing at some point here.
   }
 
-  BT::NodeStatus IsFirstRunCondition::on_tick()
+  BT::NodeStatus IsFirstRunCondition::tick()
   {
-    is_human_found_ = getInput("is_first_run")
+    getInput("is_first_run", is_first_run_);
 
-    if(is_human_found_)
+    if(is_first_run_)
     {
       RCLCPP_INFO(node_->get_logger(), "This is the first run");
       return NodesStatus::SUCCES;
@@ -30,7 +32,6 @@ namespace tiago_person_following
   }
 }
 
-#include "behaviortree_cpp_v3/bt_factory.h"
 BT_REGISTER_NODES(factory)
 {
   factory.registerNodeType<nav2_behavior_tree::IsFirstRunCondition>("IsFirstRun");  //update when we know the real path
