@@ -28,7 +28,6 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset_dir", metavar="dataset_dir", type=str, default="dataset", help="the dataset directory")
     parser.add_argument("-o", "--output_dir", type=str, default="dataset_processed", help="the output directory of the cropped dataset")
     parser.add_argument("-w", "--weights", type=str, default="yolov3.weights", help="path to weight file")
-    parser.add_argument("-n", "--names", type=str, default="data/coco.names", help="path to names file")
     args = parser.parse_args()
     print(args)
     dataset_dir = args.dataset_dir
@@ -40,7 +39,6 @@ if __name__ == "__main__":
     yolo.load_weights(weight_path)
     yolo.eval()
     yolo = yolo.to(dev)
-    classes = load_classes(args.names)
 
     for class_folder in glob(f"{dataset_dir}/*/"):
         class_name = os.path.basename(os.path.normpath(class_folder))
@@ -68,7 +66,7 @@ if __name__ == "__main__":
             detections = detections[0]
             if detections is not None:
                 detections = rescale_boxes(detections, 416, np_image.shape[:2])
-                person_dets = [det for det in detections if classes[int(det[6])].lower() == "person"]
+                person_dets = [det for det in detections if int(det[6]) == 0] # 0 == person
                 extra_path = os.path.join(class_output_dir, "extra")
                 if len(person_dets) == 0:
                     print("no person in image")
