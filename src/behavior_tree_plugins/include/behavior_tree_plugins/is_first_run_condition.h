@@ -17,7 +17,7 @@ namespace tiago_person_following
     static BT::PortsList providedPorts()
     {
       // Any port must have a name. The type is optional.
-      return { BT::InputPort<bool>("is_first_run") };
+      return { BT::InputPort<bool>("first_run_flag") };
     }
 
     // The method that is going to be executed by the thread

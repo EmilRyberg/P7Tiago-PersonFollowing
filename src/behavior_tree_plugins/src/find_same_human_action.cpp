@@ -6,7 +6,6 @@
 
 
 #include "nav2_behavior_tree/bt_action_node.hpp"
-//#include "person_follower_interfaces/msg/PersonInfo.msg"
 
 namespace tiago_person_following
 {
@@ -23,7 +22,6 @@ namespace tiago_person_following
   void FindSameHumanAction::on_tick() //what the node has to do everyime it runs
   {
     goal_.id = current_id;
-
   }  
 
   //code that runs when waiting for result
@@ -34,7 +32,7 @@ namespace tiago_person_following
   //code that runs when the action server returns a success result
   BT::NodeStatus FindSameHumanAction::on_success()
   {
-    if(result_.tracked_id != current_id)
+    if(result_.result->tracked_id != current_id)
     {
         RCLCPP_INFO(node_->get_logger(), "Could not find same person");
         setOutput("found_flag", false);
@@ -43,7 +41,7 @@ namespace tiago_person_following
 
     RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
 
-    point = result_.point;
+    point = result_.result->point;
     setOutput("person_info", point);
     setOutput("found_flag", true);
     return BT::NodeStatus::SUCCESS;

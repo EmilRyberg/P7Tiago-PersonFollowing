@@ -32,8 +32,8 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
 
-    point = result_.point;
-    person_id = result_.person_id;
+    point = result_.result->point;
+    person_id = result_.result->tracked_id;
 
     setOutput("current_id", person_id);
     setOutput("person_info", point);

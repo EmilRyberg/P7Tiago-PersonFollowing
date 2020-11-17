@@ -3,9 +3,8 @@
     <!-- ////////// -->
     <BehaviorTree ID="BehaviorTree">
         <Fallback>
-            <Condition ID="isDone"/>
             <Sequence>
-                <Condition ID="isFirstRun" first_run_flag="${first_run_flag}"/>
+                <IsFirstRunCondition ID="isFirstRun" first_run_flag="${first_run_flag}"/>
                 <Action ID="findHuman" current_id="${current_id}" first_run_set_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
             <Sequence>

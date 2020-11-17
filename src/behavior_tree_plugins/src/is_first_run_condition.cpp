@@ -17,7 +17,7 @@ namespace tiago_person_following
 
   BT::NodeStatus IsFirstRunCondition::tick()
   {
-    getInput("is_first_run", is_first_run_);
+    getInput("first_run_flag", is_first_run_);
 
     if(is_first_run_)
     {
