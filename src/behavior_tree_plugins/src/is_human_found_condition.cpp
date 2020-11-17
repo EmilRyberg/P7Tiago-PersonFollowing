@@ -21,13 +21,11 @@ namespace tiago_person_following
 
     if(is_human_found_)
     {
-      RCLCPP_INFO(node_->get_logger(), "Human was found");
-      return NodesStatus::SUCCES;
+      return BT::NodeStatus::SUCCESS;
     }
     else
     {
-      RCLCPP_INFO(node_->get_logger(), "Human was not found");
-      return NodeStatus::FAILURE;
+      return BT::NodeStatus::FAILURE;
     }
   }
 }

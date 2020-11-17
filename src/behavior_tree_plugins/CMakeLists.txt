@@ -18,6 +18,7 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(nav2_util REQUIRED)
 find_package(nav2_behavior_tree REQUIRED)
+find_package(person_follower_interfaces REQUIRED)
 #find_package(tiago_person_following REQUIRED)
 
 set(dependencies
@@ -36,6 +37,7 @@ set(dependencies
   std_srvs
   nav2_util
   nav2_behavior_tree
+  person_follower_interfaces
   #tiago_person_following
 )
 

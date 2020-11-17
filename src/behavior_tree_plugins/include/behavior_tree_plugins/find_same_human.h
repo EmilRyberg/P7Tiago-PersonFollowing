@@ -9,10 +9,12 @@
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 #include "nav2_msgs/action/wait.h"
+#include "person_follower_interfaces/action/kalman.hpp"
+
 
 namespace tiago_person_following
 {
-    class FindSameHumanAction : public nav2_behavior_tree::BtActionNode<nav2_msgs::action::Wait>
+    class FindSameHumanAction : public nav2_behavior_tree::BtActionNode<person_follower_interfaces::action::Kalman>
     {
         public:
         FindSameHumanAction(
@@ -31,20 +33,20 @@ namespace tiago_person_following
         BT::NodeStatus on_cancelled() override;
         
         // Any BT node that accepts parameters must provide a requiredNodeParameters method
-        static PortsList providedPorts()
+        static BT::PortsList providedPorts()
         {
             return providedBasicPorts(
-            {
-                BT::InputPort<int32>("current_id");
-                BT::OutputPort<int>("found_flag");
-                BT::OutputPort<nav_msgs::msgs::PoseStamped>("person_info");
-            });
+                {
+                BT::InputPort<int32_t>("current_id"),
+                BT::OutputPort<int>("found_flag"),
+                BT::OutputPort<geometry_msgs::msg::Point>("person_info"),
+                });
         }
 
         // prolly this this part wrong because i am a dumbass
         private:
-        int32 person_id;
-        nav_msgs::msg::PoseStamped pose;
+        int32_t current_id;
+        geometry_msgs::msg::Point point;
 
     };
 }
