@@ -1,0 +1,10 @@
+# Goal parameter
+int32 id # can be -1
+---
+# Result
+bool is_tracked
+geometry_msgs/Point point 
+int32 tracked_id
+---
+# Feedback
+
