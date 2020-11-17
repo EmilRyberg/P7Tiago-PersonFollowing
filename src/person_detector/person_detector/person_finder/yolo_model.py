@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from person_detector.yolo.yolo_utils import build_targets, to_cpu
+from person_detector.person_finder.yolo_utils import build_targets, to_cpu
 
 
 class Darknet53(nn.Module):
@@ -194,7 +194,7 @@ class YOLOv3Tiny(nn.Module):
         ptr = self.second_yolo_conv.load_weights(ptr, weights)
         ptr = self.second_yolo_conv2.load_weights(ptr, weights)
         ptr = self.second_yolo_conv3.load_weights(ptr, weights)
-        print(f"Loaded weights {ptr}/{weights.shape[0]}")
+        #print(f"Loaded weights {ptr}/{weights.shape[0]}")
 
 
 class YOLOLayer(nn.Module):
@@ -499,4 +499,4 @@ class YOLOv3(nn.Module):
         ptr = self.conv2.load_weights(ptr, weights)
         for i, module in enumerate(self.third_yolo_conv_blocks):
             ptr = module.load_weights(ptr, weights)
-        print(f"Loaded weights {ptr}/{weights.shape[0]}")
+        #print(f"Loaded weights {ptr}/{weights.shape[0]}")

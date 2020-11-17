@@ -1,8 +1,8 @@
 import torch.nn.functional as F
 import numpy as np
 import torchvision.transforms as transforms
-from person_detector.yolo.yolo_model import YOLOv3
-from person_detector.yolo.yolo_utils import non_max_suppression, rescale_boxes, load_classes
+from person_detector.person_finder.yolo_model import YOLOv3
+from person_detector.person_finder.yolo_utils import non_max_suppression, rescale_boxes, load_classes
 
 
 def pad_to_square(img, pad_value):
@@ -18,12 +18,11 @@ def pad_to_square(img, pad_value):
 
 
 class PersonFinder:
-    def __init__(self, yolo_weights_dir, class_name_dir, on_gpu=True):
+    def __init__(self, yolo_weights_dir, on_gpu=True):
         self.model = YOLOv3(80)
         self.model.load_weights(yolo_weights_dir)
         self.model.eval()
         self.on_gpu = on_gpu
-        self.classes = load_classes(class_name_dir)
         if on_gpu:
             self.model.cuda()
 
@@ -50,6 +49,7 @@ class PersonFinder:
         detections = detections[0]
         if detections is not None:
             detections = rescale_boxes(detections, 416, np_image.shape[:2])
-            person_dets = [det for det in detections if self.classes[int(det[6])].lower() == "person"]
+            person_dets = [det for det in detections if int(det[6]) == 0]  # Detection of ID 0 is person
             return person_dets
-		return []
+        else:
+            return []
