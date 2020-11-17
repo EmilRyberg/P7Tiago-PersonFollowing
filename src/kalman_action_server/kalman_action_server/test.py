@@ -19,6 +19,7 @@ class KalmanTestClass(Node):
         self._send_goal_future = self._action_client.send_goal_async(goal_msg, feedback_callback=self.feedback_callback)
 
         self._send_goal_future.add_done_callback(self.goal_response_callback)
+        
 
     def goal_response_callback(self, future):
         goal_handle = future.result()
@@ -30,8 +31,9 @@ class KalmanTestClass(Node):
         print("Goal accepted :)")
 
         self._get_result_future = goal_handle.get_result_async()
-
         self._get_result_future.add_done_callback(self.get_result_callback)
+        
+
 
     def get_result_callback(self, future):
         result = future.result().result
@@ -48,7 +50,7 @@ def main(args=None):
 
     action_client = KalmanTestClass()
 
-    action_client.send_goal(2)
+    action_client.send_goal(0)
 
     rclpy.spin(action_client)
 

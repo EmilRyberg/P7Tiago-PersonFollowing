@@ -6,7 +6,7 @@ np.set_printoptions(suppress=True)
 # Must do track() before adding new filters! 
 class KfTracker:
     # Variables related to the state
-    x = np.array([[0], [0], [0], [0]])
+    x = np.array([[0.], [0.], [0.], [0.]])
     P = np.eye(4) * 1000.
     isTracked = True
 
@@ -35,7 +35,7 @@ class KfTracker:
     def __init__(self, mPos, timeStamp): 
         self.prevTime = timeStamp
 
-        self.x = np.array([[mPos[0]], [mPos[1]], [0], [0]])
+        self.x = np.array([[mPos[0]], [mPos[1]], [0.], [0.]])
         self.P = np.eye(4) * 1000.
 
 
