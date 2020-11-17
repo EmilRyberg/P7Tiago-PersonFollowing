@@ -1,0 +1,9 @@
+# Goal parameter
+int32 id
+---
+# Result
+bool is_tracked
+---
+# Feedback
+geometry_msgs/Point point 
+int32 is_found
