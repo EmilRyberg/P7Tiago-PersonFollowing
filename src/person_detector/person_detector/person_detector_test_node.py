@@ -73,17 +73,18 @@ class PersonDetectorTest(Node):
             features = self.feature_extractor.get_features(cropped_person_img)
             if len(self.person_features_mapping) == 0:
                 self.person_features_mapping.append((self.person_id, features))
-                person_detection_mapping.append((self.person_id, person_detection))
+                person_detection_mapping.append((person_detection, self.person_id))
                 self.person_id += 1
             else:
                 found_same_person = False
                 for pid, emb in self.person_features_mapping:
                     distance = embedding_distance(features, emb)
                     # print(f"Distance: {distance}")
-                    same_person = is_same_person(features, emb, threshold=1.2)
+                    self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+                    same_person = is_same_person(features, emb, threshold=0.8)
                     if same_person:
                         found_same_person = True
-                        person_detection_mapping.append((pid, person_detection))
+                        person_detection_mapping.append((person_detection, pid))
                         break
                 if not found_same_person:
                     self.person_features_mapping.append((self.person_id, features))

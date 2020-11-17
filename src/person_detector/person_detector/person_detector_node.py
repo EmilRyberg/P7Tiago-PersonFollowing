@@ -6,6 +6,7 @@ from geometry_msgs.msg import Point
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
+import rospy
 import tf2_ros
 from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
 from person_detector.person_finder.person_finder import PersonFinder
@@ -57,7 +58,7 @@ class PersonDetector(Node):
         self.person_features_mapping = []
         self.person_id = 0
 
-        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(secs=10))
         self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=True, node=self)
         self.first_run = True
         self.found_transform = False
@@ -122,7 +123,7 @@ class PersonDetector(Node):
                 persons.append(person)
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = 0 # TODO change this to the correct frame id of depth sensor
+        header.frame_id = 'abc' # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons)
         self.publisher_.publish(person_info)
 
@@ -134,9 +135,9 @@ class PersonDetector(Node):
 
         time_difference = self.depth_stamp.sec + self.depth_stamp.nanosec*1e-9 - (self.old_depth_stamp.sec+self.old_depth_stamp.nanosec*1e-9)
         if time_difference > 1:
-            self.get_logger.error(f"Images and tf frames are delayed by more than 1s. Last error: {self.last_error}")
+            self.get_logger().error(f"Images and tf frames are delayed by more than 1s. Last error: {self.last_error}")
         elif time_difference > 0.5:
-            self.get_logger.warn("Images and tf frames are delayed by more than 0.5s")
+            self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
 
         try:
             transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
