@@ -6,7 +6,6 @@ from geometry_msgs.msg import Point
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
-import rospy
 import tf2_ros
 from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
 from person_detector.person_finder.person_finder import PersonFinder
@@ -19,6 +18,12 @@ HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
+
+
+class CustomDuration: # Hack to make duration for tf2_ros work since it expects 2 fields, sec and nanosec
+    def __init__(self, sec=0, nanosec=0):
+        self.sec = sec
+        self.nanosec = nanosec
 
 
 class PersonDetector(Node):
@@ -35,6 +40,7 @@ class PersonDetector(Node):
         yolo_weights_path = self.get_parameter("yolo_weights_path").get_parameter_value().string_value
         yolo_weights_path = os.path.expanduser(yolo_weights_path)
         on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
+
         self.image_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_images",
                                                          self.image_callback,
@@ -58,7 +64,7 @@ class PersonDetector(Node):
         self.person_features_mapping = []
         self.person_id = 0
 
-        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(secs=10))
+        self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=10))
         self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=True, node=self)
         self.first_run = True
         self.found_transform = False
