@@ -34,5 +34,5 @@ namespace tiago_person_following
 
 BT_REGISTER_NODES(factory)
 {
-  factory.registerNodeType<nav2_behavior_tree::IsHumanFoundCondition>("IsHumanFound");  //update when we know the real path
+  factory.registerNodeType<tiago_person_following::IsHumanFoundCondition>("IsHumanFound");  //update when we know the real path
 }

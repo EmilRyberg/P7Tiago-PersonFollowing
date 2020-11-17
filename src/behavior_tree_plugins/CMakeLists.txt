@@ -52,7 +52,7 @@ if(NOT CMAKE_CXX_STANDARD)
 endif()
 
 include_directories(
-  include
+  include/behavior_tree_plugins
 )
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -76,11 +76,10 @@ ament_target_dependencies(find_same_human_action
   ${dependencies}
 )
 
-add_library(has_moved_condition SHARED src/has_moved_condition.hpp)
+add_library(has_moved_condition SHARED src/has_moved_condition.cpp)
 ament_target_dependencies(has_moved_condition
   ${dependencies}
 )
-SET_TARGET_PROPERTIES(has_moved_condition PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(is_human_found_condition SHARED src/is_human_found_condition.cpp)
 ament_target_dependencies(is_human_found_condition

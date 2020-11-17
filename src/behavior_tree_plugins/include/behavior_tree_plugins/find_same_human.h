@@ -8,10 +8,11 @@
 #include "nav2_msgs/action/wait.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
+#include "nav2_msgs/action/wait.h"
 
-namespace tiago_follow_person
+namespace tiago_person_following
 {
-    class FindSameHumanAction : public BtActionNode<nav2_msgs::action::FindSameHuman>
+    class FindSameHumanAction : public nav2_behavior_tree::BtActionNode<nav2_msgs::action::Wait>
     {
         public:
         FindSameHumanAction(
@@ -23,11 +24,11 @@ namespace tiago_follow_person
 
         void on_wait_for_result() override;
 
-        void on_success() override;
+        BT::NodeStatus on_success() override;
 
-        void on_aborted() override;
+        BT::NodeStatus on_aborted() override;
 
-        void on_cancelled() override;
+        BT::NodeStatus on_cancelled() override;
         
         // Any BT node that accepts parameters must provide a requiredNodeParameters method
         static PortsList providedPorts()

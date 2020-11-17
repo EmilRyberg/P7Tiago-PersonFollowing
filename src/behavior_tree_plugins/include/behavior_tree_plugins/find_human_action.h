@@ -11,7 +11,7 @@
 
 namespace tiago_follow_person
 {
-    class FindHumanAction : public BtActionNode<nav2_msgs::action::FindHuman>
+    class FindHumanAction : public BT::BtActionNode<nav2_msgs::action::FindHuman>
     {
         public:
         FindHumanAction(

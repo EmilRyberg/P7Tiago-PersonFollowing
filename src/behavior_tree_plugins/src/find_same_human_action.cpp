@@ -12,13 +12,18 @@ namespace tiago_person_following
     const std::string & xml_tag_name,
     const std::string & action_name,
     const BT::NodeConfiguration & config)
-     : BtActionNode<nav2_msgs::action::FindSameHuman>(xml_tag_name, action_name, conf)
+     : BtActionNode<nav2_msgs::action::Wait>(xml_tag_name, action_name, config)
   {
-    BT::getInput("current_id", goal_);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
+    int32 current_id;
+    getInput("current_id", current_id);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
+
+    goal_.id = current_id;
   }
 
   void FindSameHumanAction::on_tick() //what the node has to do everyime it runs
   {
+    goal_.id = current_id;
+
   }  
 
   //code that runs when waiting for result
@@ -27,13 +32,13 @@ namespace tiago_person_following
   }
 
   //code that runs when the action server returns a success result
-  void FindSameHumanAction::on_success()
+  BT::NodeStatus FindSameHumanAction::on_success()
   {
-    if(result_.person_id != goal_)
+    if(result_.person_id != current_id)
     {
         RCLCPP_INFO(node_->get_logger(), "Could not find same person");
         setOutpu("found_flag", false);
-        return NodeStatus::FAILURE;
+        return BT::NodeStatus::FAILURE;
     }
 
     RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
@@ -41,19 +46,22 @@ namespace tiago_person_following
     pose = result_.pose
     BT::setOutput("person_info", pose);
     BT::setOutout("found_flag", true);
-    return NodeStatus::SUCCESS;
+    return BT::NodeStatus::SUCCESS;
   }
 
   //code that runs when the action server returns an aborted result
-  void FindSameHumanAction::on_aborted()
+  BT::NodeStatus FindSameHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
+    return BT::NodeStatus::FAILURE;
   }
 
   //code that runs when the actions server returns a cancelled result
-  void FindSameHumanAction::on_cancelled()
+  BT::NodeStatus FindSameHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
+    return BT::NodeStatus::FAILURE;
+
   }
 }
 
