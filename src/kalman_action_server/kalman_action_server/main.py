@@ -15,6 +15,7 @@ class KalmanTracking(Node):
     kf = list()
     kf_number = 0
 
+    # Which ID to follow
     tracked_id = -1
 
     def __init__(self):
