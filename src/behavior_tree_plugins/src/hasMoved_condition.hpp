@@ -19,7 +19,7 @@ public:
 
 	BT::NodeStatus tick() override
 	{
-		has_robot_moved = getInput("moved_flag");
+		getInput("moved_flag", has_robot_moved);
 
 		if (has_robot_moved) return BT::NodeStatus::SUCCESS;
 		else return BT::NodeStatus::FAILURE;
