@@ -24,7 +24,7 @@ def matplotlib_imshow(img, one_channel=False):
 
 
 def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30,
-                  on_gpu=True, checkpoint_dir="checkpoints", batch_size=24, print_interval=50):
+                  on_gpu=True, checkpoint_dir="checkpoints", batch_size=24, print_interval=50, num_classes=12):
     writer = SummaryWriter(f"runs/{run_name}")
     data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
@@ -39,7 +39,7 @@ def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     train_set, test_set = torch.utils.data.random_split(dataset, [train_length, test_length])
     dataloader = DataLoader(train_set, shuffle=True, batch_size=batch_size, num_workers=4)
     test_dataloader = DataLoader(test_set, shuffle=False, batch_size=batch_size, num_workers=4)
-    model = FeatureExtractorNet(use_classifier=True, freeze_backbone=True)
+    model = FeatureExtractorNet(use_classifier=True, num_classes=num_classes)
     if not os.path.isdir(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     if weights_dir:
