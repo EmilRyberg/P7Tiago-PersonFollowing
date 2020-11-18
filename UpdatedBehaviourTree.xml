@@ -4,23 +4,23 @@
     <BehaviorTree ID="BehaviorTree">
         <Fallback>
             <Sequence>
-                <IsFirstRunCondition ID="isFirstRun" first_run_flag="${first_run_flag}"/>
-                <FindHumanAction ID="findHuman" current_id="${current_id}" first_run_set_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
+                <IsFirstRun ID="isFirstRun" first_run_flag="${first_run_flag}"/>
+                <FindHuman ID="findHuman" current_id="${current_id}" first_run_set_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
             <Sequence>
-                <IsHumanFoundCondition ID="isHumanFound" found_flag="${found_flag}"/>
+                <IsHumanFound ID="isHumanFound" found_flag="${found_flag}"/>
                 <SubTree ID="NavigationWithRecovery"/>
-                <FindSameHumanAction ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
+                <FindSameHuman ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
             <Sequence>
                 <Fallback>
-                    <HasMovedCondition ID="hasMovedToLastPosition" moved_flag="${moved_flag}"/>
+                    <HasMoved ID="hasMovedToLastPosition" moved_flag="${moved_flag}"/>
                     <Sequence name="">
                         <SubTree ID="NavigationWithRecovery"/>
                         <SetBlackboard name="" output_key="${moved_flag}" value="true"/>
                     </Sequence>
                 </Fallback>
-                <FindSameHumanAction ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
+                <FindSameHuman ID="findSameHuman" current_id="${current_id}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
         </Fallback>
     </BehaviorTree>
