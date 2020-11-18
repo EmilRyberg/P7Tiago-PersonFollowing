@@ -190,7 +190,8 @@ class PersonDetector(Node):
 
         # Getting the distance to the target
         dist = self.depth_image.item(yp, xp)
-
+        if np.isnan(dist):
+            return None
 
         # We calculate the two angles for the pixel
         horizontal_angle = ah * xp + bh
