@@ -24,9 +24,9 @@ class KalmanTracking(Node):
 
         self._action_server = ActionServer(self, Kalman, 'kalmanTracker', self.action_cb)
 
-    def detection_cb(self, msg):
-        time = msg.header.timestamp.sec + msg.header.timestamp.nanosec / 1e9 # Conversion to seconds
-        persons = msg.persons.persons
+    def detection_cb(self, msg: PersonInfoList):
+        time = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9 # Conversion to seconds
+        persons = msg.persons
         persons.sort(key=sort_obj_based_on_id) # Sorting based on ID
         self.tracked_id = msg.tracked_id
 
@@ -40,9 +40,11 @@ class KalmanTracking(Node):
         newPersonIdx = 0
         for i in range(self.kf_number if self.kf_number > persons[-1].person_id+1 else persons[-1].person_id+1):
             # This runs when there is no update to the specific ID
+            if newPersonIdx >= len(persons):
+                newPersonIdx = len(persons) - 1
+
             if i != persons[newPersonIdx].person_id and i < self.kf_number:
                 self.kf[i].predict(time)
-
                 self.kf[i].isTracked = False
                 
             # Runs when there is an update to a specific ID
@@ -50,8 +52,8 @@ class KalmanTracking(Node):
                 self.kf[i].predict(time)
 
                 # Getting the measured position into the right format
-                mPos = np.array([persons[newPersonIdx].point.x, 
-                                 persons[newPersonIdx].point.y])
+                mPos = np.array([[persons[newPersonIdx].point.x],
+                                 [persons[newPersonIdx].point.y]])
 
                 self.kf[i].update(mPos)
                 
@@ -82,7 +84,6 @@ class KalmanTracking(Node):
             result.is_tracked = self.kf[id].isTracked
 
         result.tracked_id = self.tracked_id # Replying which ID is to be tracked, essentially forwarding from earlier
-
         return result
 
 
