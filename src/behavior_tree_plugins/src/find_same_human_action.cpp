@@ -35,7 +35,7 @@ namespace tiago_person_following
     if(result_.result->tracked_id != current_id)
     {
         RCLCPP_INFO(node_->get_logger(), "Could not find same person");
-        setOutput("found_flag", false);
+        setOutput("found", false);
         return BT::NodeStatus::FAILURE;
     }
 
@@ -43,7 +43,7 @@ namespace tiago_person_following
 
     point = result_.result->point;
     setOutput("person_info", point);
-    setOutput("found_flag", true);
+    setOutput("found", true);
     return BT::NodeStatus::SUCCESS;
   }
 

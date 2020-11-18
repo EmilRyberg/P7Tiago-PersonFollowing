@@ -5,7 +5,7 @@
         <Fallback>
             <Sequence>
                 <IsFirstRun ID="isFirstRun" first_run_flag="${first_run_flag}"/>
-                <FindHuman ID="findHuman" current_id="${current_id}" first_run_set_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
+                <FindHuman ID="findHuman" current_id="${current_id}" first_run_flag="${first_run_flag}" found="${found_flag}" person_info="${person_info}"/>
             </Sequence>
             <Sequence>
                 <IsHumanFound ID="isHumanFound" found_flag="${found_flag}"/>

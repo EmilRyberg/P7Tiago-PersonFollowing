@@ -37,7 +37,7 @@ namespace tiago_person_following
 
     setOutput("current_id", person_id);
     setOutput("person_info", point);
-    setOutput("found_flag", true);
+    setOutput("found", true);
     setOutput("first_run_flag", false);
     return BT::NodeStatus::SUCCESS;
   }

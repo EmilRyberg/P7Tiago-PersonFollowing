@@ -36,8 +36,9 @@ namespace tiago_person_following
             return providedBasicPorts(
             {
                 BT::OutputPort<int32_t>("current_id"),
-                BT::OutputPort<int>("found_flag"),
-                BT::OutputPort<geometry_msgs::msg::Point>("person_info")
+                BT::OutputPort<int>("found"),
+                BT::OutputPort<geometry_msgs::msg::Point>("person_info"),
+                BT::OutputPort<bool>("first_run_flag")
             });
         }
 
