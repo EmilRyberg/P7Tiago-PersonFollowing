@@ -38,7 +38,7 @@ namespace tiago_person_following
     setOutput("current_id", person_id);
     setOutput("person_info", point);
     setOutput("found_flag", true);
-    setOutput("first_run_flag", false)
+    setOutput("first_run_flag", false);
     return BT::NodeStatus::SUCCESS;
   }
 
@@ -46,12 +46,14 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
+    return BT::NodeStatus::FAILURE;
   }
 
   //code that runs when the actions server returns a cancelled result
   BT::NodeStatus FindHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
+    return BT::NodeStatus::FAILURE;
   }
 }
 
