@@ -2,6 +2,7 @@
 #define CONDITIONTEST_H
 
 #include "behaviortree_cpp_v3/condition_node.h"
+#include "nav2_util/geometry_utils.hpp"
 
 
 //Not done yet
@@ -17,7 +18,12 @@ namespace tiago_person_following
     static BT::PortsList providedPorts()
     {
       // Any port must have a name. The type is optional.
-      return { BT::InputPort<bool>("first_run_flag") };
+      return { 
+        BT::OutputPort<bool>("found"),
+        BT::OutputPort<bool>("moved_flag"),
+        BT::OutputPort<int32_t>("current_id"),
+        BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info")
+       };
     }
 
     // The method that is going to be executed by the thread
@@ -25,6 +31,7 @@ namespace tiago_person_following
 
     private:
       bool is_first_run_ = false;
+      bool first_run_var_ = true;
   };
 }
 

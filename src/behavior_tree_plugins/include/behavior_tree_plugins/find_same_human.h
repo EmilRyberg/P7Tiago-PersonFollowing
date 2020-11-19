@@ -5,7 +5,7 @@
 #include <string>
 
 #include "nav2_behavior_tree/bt_action_node.hpp"
-#include "nav2_msgs/action/wait.hpp"
+#include "nav2_util/geometry_utils.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 #include "nav2_msgs/action/wait.h"
@@ -38,16 +38,15 @@ namespace tiago_person_following
             return providedBasicPorts(
                 {
                 BT::InputPort<int32_t>("current_id"),
-                BT::OutputPort<int>("found"),
-                BT::OutputPort<geometry_msgs::msg::Point>("person_info"),
+                BT::OutputPort<bool>("found"),
+                BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
                 });
         }
 
         // prolly this this part wrong because i am a dumbass
         private:
         int32_t current_id;
-        geometry_msgs::msg::Point point;
-
+        geometry_msgs::msg::PoseStamped pose;
     };
 }
 #endif  // PERSON_FOLLOW_LOOK_FOR_HUMAN_ACTION_HPP_

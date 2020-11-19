@@ -15,13 +15,13 @@ namespace tiago_person_following
     const BT::NodeConfiguration & config)
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
-    getInput("current_id", current_id);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
-    goal_.id = current_id;
   }
 
   void FindSameHumanAction::on_tick() //what the node has to do everyime it runs
   {
+    getInput("current_id", current_id);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
     goal_.id = current_id;
+    RCLCPP_INFO(node_->get_logger(), "I sure like to tick");
   }  
 
   //code that runs when waiting for result
@@ -41,8 +41,8 @@ namespace tiago_person_following
 
     RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
 
-    point = result_.result->point;
-    setOutput("person_info", point);
+    pose = result_.result->pose;
+    setOutput("person_info", pose);
     setOutput("found", true);
     return BT::NodeStatus::SUCCESS;
   }
@@ -70,7 +70,7 @@ BT_REGISTER_NODES(factory)
     [](const std::string & name, const BT::NodeConfiguration & config)
     {
       return std::make_unique<tiago_person_following::FindSameHumanAction>(
-        name, "find_same_human", config);
+        name, "find_human", config);
     };
 
   factory.registerBuilder<tiago_person_following::FindSameHumanAction>(

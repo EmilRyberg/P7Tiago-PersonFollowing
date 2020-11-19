@@ -7,6 +7,7 @@
 #include "nav2_behavior_tree/bt_action_node.hpp"
 #include "nav2_msgs/action/wait.hpp"
 #include "person_follower_interfaces/action/kalman.hpp"
+#include "nav2_util/geometry_utils.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
 
@@ -36,9 +37,10 @@ namespace tiago_person_following
             return providedBasicPorts(
             {
                 BT::OutputPort<int32_t>("current_id"),
-                BT::OutputPort<int>("found"),
-                BT::OutputPort<geometry_msgs::msg::Point>("person_info"),
-                BT::OutputPort<bool>("first_run_flag")
+                BT::OutputPort<bool>("found"),
+                BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
+                BT::OutputPort<bool>("first_run_flag"),
+                BT::OutputPort<geometry_msgs::msg::PoseStamped>("goal")
             });
         }
 
@@ -46,7 +48,7 @@ namespace tiago_person_following
         private:
         int32_t look_for_id;
         int32_t person_id;
-        geometry_msgs::msg::Point point;
+        geometry_msgs::msg::PoseStamped pose;
     };
 }
 #endif  // PERSON_FOLLOW_LOOK_FOR_HUMAN_ACTION_HPP_
