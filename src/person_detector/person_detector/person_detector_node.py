@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import CompressedImage, Image
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Pose, PoseStamped
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
@@ -41,6 +41,7 @@ class PersonDetector(Node):
         yolo_weights_path = os.path.expanduser(yolo_weights_path)
         on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
 
+        self.get_logger().info("Subscribing to topics")
         self.image_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_images",
                                                          self.image_callback,
@@ -50,6 +51,7 @@ class PersonDetector(Node):
                                                          self.depth_callback,
                                                          qos_profile)
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
+        self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
         self.person_finder = PersonFinder(yolo_weights_path, on_gpu=on_gpu)
         self.cv_bridge = CvBridge()
@@ -79,7 +81,7 @@ class PersonDetector(Node):
 
     def depth_callback(self, msg: Image):
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        #self.get_logger().info(f"got depth image {self.depth_image.shape}")
+        self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
         self.got_image_callback()
@@ -121,22 +123,24 @@ class PersonDetector(Node):
                     person_detection_mapping.append((self.person_id, person_detection))
                     self.person_id += 1
 
-            map_point = self.transform_image_to_map(bounding_box=person_detection)
-            if map_point is None:
-                self.get_logger().warn(f"Returned map_point is None, skipping person with ID: {person_id}")
+            map_pose = self.transform_image_to_map(bounding_box=person_detection)
+            if map_pose is None:
+                self.get_logger().warn(f"Returned map_pose is None, skipping person with ID: {person_id}")
             else:
                 person = PersonInfo()
                 person.person_id = person_id
-                person.point = map_point
+                person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
+                person.pose = PoseStamped(header=person_header, pose=map_pose)
                 persons.append(person)
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = 'abc' # TODO change this to the correct frame id of depth sensor
+        header.frame_id = "map" # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=0)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
+        self.get_logger().info("Published")
 
-    def transform_image_to_map(self, bounding_box) -> Optional[Point]:
+    def transform_image_to_map(self, bounding_box) -> Optional[Pose]:
         stamp = self.depth_stamp
         self.old_depth_stamp = stamp
         #if self.found_transform or self.first_run:
@@ -157,6 +161,7 @@ class PersonDetector(Node):
             transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
         except tf2_ros.ExtrapolationException as e:
             self.last_error = e
+            self.get_logger().error(f"Transform rip: {e}")
             self.found_transform = False
             return None
         self.found_transform = True
@@ -176,7 +181,6 @@ class PersonDetector(Node):
         bv = VFOV / 2
 
         # Here, if we have a bounding box, we find the position of the object and publish it
-        point = Point()
         # Getting the middle pixel of the bounding box
         # TODO replace with better method
         xp = int(bounding_box[0]) + int(bounding_box[2] / 2)
@@ -213,13 +217,18 @@ class PersonDetector(Node):
         # We transform it to map frame
         map_point = np.dot(R, v) + T
         self.get_logger().info(f"Map point: {map_point}")
-        point.x = map_point[0]
-        point.y = map_point[1]
-        point.z = map_point[2]
+        pose = Pose()
+        pose.position.x = map_point[0]
+        pose.position.y = map_point[1]
+        pose.position.z = map_point[2]
+        pose.orientation.x = transform.transform.rotation.x
+        pose.orientation.y = transform.transform.rotation.y
+        pose.orientation.z = transform.transform.rotation.z
+        pose.orientation.w = transform.transform.rotation.w
 
         #self.old_depth_stamp = self.depth_stamp
 
-        return point
+        return pose
 
     def quaternion_to_rotation_matrix(self, transform):
         w = transform.transform.rotation.w
