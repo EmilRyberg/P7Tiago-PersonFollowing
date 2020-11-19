@@ -28,10 +28,10 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     example_input = None
     if not os.path.isdir(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    for data in dataloader:
-        _, example_input, _ = data
-        break
-    writer.add_graph(model, example_input)
+    # for data in dataloader:
+    #     _, example_input, _ = data
+    #     break
+    # writer.add_graph(model, example_input)
     for param in model.backbone.parameters():
         param.requires_grad = False
     criterion = nn.TripletMarginLoss(margin=0.2)
@@ -68,7 +68,7 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             negative_indices_tensor = torch.tensor(negative_indices)
             if on_gpu:
                 negative_indices_tensor = negative_indices_tensor.cuda()
-            new_negatives = all_images.detach().index_select(0, torch.tensor(negative_indices_tensor))
+            new_negatives = all_images.detach().index_select(0, negative_indices_tensor)
             if on_gpu:
                 new_negatives = new_negatives.cuda()
             new_negative_embeddings = model(new_negatives)

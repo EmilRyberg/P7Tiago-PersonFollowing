@@ -103,18 +103,11 @@ def cb(data):
         # Getting the middle pixel of the bounding box
         xp = int(bbox[0]) + int(bbox[2] / 2)
         yp = int(bbox[1]) + int(bbox[3] / 2)
-        #a=int(bbox[0])
-        #b=int(bbox[1])
-        #c=int(bbox[0]+bbox[2])
-        #d=int(bbox[1]+bbox[3])
-        #xleft=(a+xp)/2
-        #yleft=yp
-        #xright=(c+yp)/2
-        #yright=yp
-        #xup=xp
-        #yup=(b+yp)/2
-        #xdown=xp
-        #ydown=(d+yp)/2
+        #x1=xp+20
+        #x2=xp-20
+        #y1=yp+20
+        #y2=yp-20
+        
 
 
         # The middle pixel can be outsude the frame, so we stop that
@@ -126,12 +119,15 @@ def cb(data):
         # Getting the distance to the target
         dist = dImg.item(yp, xp)
         #distmiddle=dImg.item(yp, xp)
-        #distleft=dImg.item(yleft, xleft)
-        #distright=dImg.item(yright, xright)
-        #distup=dImg.item(yup, xdown)
-        #distdown=dImg.item(ydown, xdown)
-        #distmean=(distleft+distmiddle+distup+distdown+distright)/5
-
+        #dist1=dImg.item(yp, x1)
+        #dist2=dImg.item(yp, x2)
+        #dist3=dImg.item(y1, xp)
+        #dist4=dImg.item(y1, x1)
+        #dist5=dImg.item(y1, x2)
+        #dist6=dImg.item(,y2 xp)
+        #dist7=dImg.item(y2, x1)
+        #dist8=dImg.item(y2, x2)
+        #distmean=(distmiddle+dist1+dist2+dist3+dist4+dist5+dist6+dist7+dist8)/9
         # We calculate the two angles for the pixel
         Hangle = ah * xp + bh
         Vangle = av * yp + bv

@@ -18,7 +18,10 @@ class FeatureExtractor:
         self.model = FeatureExtractorNet()
         self.on_gpu = on_gpu
         self.image_size = image_size
-        self.model.load_state_dict(torch.load(weights_dir))
+        if on_gpu:
+            self.model.load_state_dict(torch.load(weights_dir))
+        else:
+            self.model.load_state_dict(torch.load(weights_dir, map_location=torch.device('cpu')))
         self.model.eval()
         if on_gpu:
             self.model = self.model.cuda()
