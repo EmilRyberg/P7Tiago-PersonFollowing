@@ -103,10 +103,10 @@ def cb(data):
         # Getting the middle pixel of the bounding box
         xp = int(bbox[0]) + int(bbox[2] / 2)
         yp = int(bbox[1]) + int(bbox[3] / 2)
-        #x1=xp+20
-        #x2=xp-20
-        #y1=yp+20
-        #y2=yp-20
+        x1=xp+10
+        x2=xp-10
+        y1=yp+10
+        y2=yp-10
         
 
 
@@ -117,18 +117,31 @@ def cb(data):
         yp = 0 if yp < 0 else yp
 
         # Getting the distance to the target
-        dist = dImg.item(yp, xp)
-        #distmiddle=dImg.item(yp, xp)
-        #dist1=dImg.item(yp, x1)
-        #dist2=dImg.item(yp, x2)
-        #dist3=dImg.item(y1, xp)
-        #dist4=dImg.item(y1, x1)
-        #dist5=dImg.item(y1, x2)
-        #dist6=dImg.item(,y2 xp)
-        #dist7=dImg.item(y2, x1)
-        #dist8=dImg.item(y2, x2)
-        #distmean=(distmiddle+dist1+dist2+dist3+dist4+dist5+dist6+dist7+dist8)/9
-        # We calculate the two angles for the pixel
+        xi=x2
+        yi=y2
+        dist=0
+        while xi<=x1:
+            while yi<=y1:
+                dist=dist+dImg.item(yi,xi)
+                yi=yi+1
+            xi=xi+1
+        distmean=dist/400
+        def read_depth(dImg,bbox):
+            xp = int(bbox[0]) + int(bbox[2] / 2)
+            yp = int(bbox[1]) + int(bbox[3] / 2)
+            x1=xp-10
+            y1=yp-10
+            x2=xp+10
+            y2=yp+10
+            dist=0
+            while x1<=x2:
+                    while y1<=y2:
+                        dist=dist+dImg.item(y1,x1)
+                        y1=y1+1
+                    x1=x1+1
+            average_depth=dist/400
+            return average_depth
+       
         Hangle = ah * xp + bh
         Vangle = av * yp + bv
 
