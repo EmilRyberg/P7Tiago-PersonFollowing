@@ -4,7 +4,7 @@
     <BehaviorTree ID="BehaviorTree">
         <Fallback>
             <Sequence>
-                <IsFirstRun ID="isFirstRun" first_run_flag="{first_run_flag}"/>
+                <IsFirstRun ID="isFirstRun" />
                 <FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}"/>
             </Sequence>
             <Sequence>
