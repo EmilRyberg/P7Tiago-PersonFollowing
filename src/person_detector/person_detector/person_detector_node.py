@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time, Duration
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import CompressedImage, Image
 from geometry_msgs.msg import Point, PointStamped
@@ -20,6 +21,8 @@ HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
+UNCONFIRMED_COUNT_THRESHOLD = 3
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 5  # secs
 
 class from_image_to(Enum):
     camera_angle = -1
@@ -49,6 +52,7 @@ class PersonDetector(Node):
         yolo_weights_path = os.path.expanduser(yolo_weights_path)
         on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
 
+        self.get_logger().info("Subscribing to topics")
         self.image_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_images",
                                                          self.image_callback,
@@ -58,6 +62,7 @@ class PersonDetector(Node):
                                                          self.depth_callback,
                                                          qos_profile)
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
+        self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
         self.person_finder = PersonFinder(yolo_weights_path, on_gpu=on_gpu)
         self.cv_bridge = CvBridge()
@@ -70,6 +75,7 @@ class PersonDetector(Node):
         self.depth_is_updated = False
 
         self.person_features_mapping = []
+        self.unconfirmed_persons = []
         self.person_id = 0
 
         self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=20))
@@ -92,7 +98,7 @@ class PersonDetector(Node):
 
     def depth_callback(self, msg: Image):
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        #self.get_logger().info(f"got depth image {self.depth_image.shape}")
+        self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
         self.got_image_callback()
@@ -105,37 +111,75 @@ class PersonDetector(Node):
 
         self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
-        person_detection_mapping = []
         persons = []
         for person_detection in person_detections:
             cropped_person_img = self.person_finder.crop_bounding_box(self.image, person_detection)
             features = self.feature_extractor.get_features(cropped_person_img)
+            found_same_person = False
+            features_below_threshold = []
             person_id = None
-            if len(self.person_features_mapping) == 0:
-                self.person_features_mapping.append((self.person_id, features))
-                person_detection_mapping.append((self.person_id, person_detection))
-                person_id = self.person_id
-                self.person_id += 1
+            for i, (pid, emb) in enumerate(self.person_features_mapping):
+                distance = embedding_distance(features, emb)
+                self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+                # print(f"Distance: {distance}")
+                is_below_threshold = is_same_person(features, emb, threshold=0.9)
+                if is_below_threshold:
+                    found_same_person = True
+                    features_below_threshold.append((pid, distance, person_detection, i))
+            if found_same_person:
+                min_distance = 3  # distance is between 0 and 2
+                best_match = None
+                best_index = None
+                for pid, distance, person_detection, index in features_below_threshold:
+                    if distance < min_distance:
+                        min_distance = distance
+                        best_person_id = pid
+                        best_index = index
+                current_person_id, current_features = self.person_features_mapping[best_index]
+                new_emb = current_features * 0.8 + features * 0.2
+                #diff_dist = embedding_distance(current_features, new_emb)
+                #self.get_logger().info(f"Moving embedding, diff distance: {diff_dist}")
+
+                self.person_features_mapping[best_index] = (best_match[1], new_emb)
+                person_id = best_person_id
             else:
-                found_same_person = False
-                for pid, emb in self.person_features_mapping:
+                indices_to_remove = []
+                found_same_unconfirmed_person = False
+                time_now = self.get_clock().now()
+                unconfirmed_below_threshold = []
+                for i, (emb, times_found, time_last_seen) in enumerate(self.unconfirmed_persons):
+                    if time_now-time_last_seen > Duration(seconds=UNCONFIRMED_TIME_THRESHOLD_SECONDS):
+                        self.get_logger().info(f"Removing index: {i}")
+                        indices_to_remove.append(i)
+                        continue
                     distance = embedding_distance(features, emb)
-                    self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
-                    # print(f"Distance: {distance}")
-                    same_person = is_same_person(features, emb, threshold=0.5)
-
-                    if same_person:
-                        found_same_person = True
-                        person_id = pid
-                        person_detection_mapping.append((pid, person_detection))
-
-                        break
-
-                if not found_same_person:
-                    self.person_features_mapping.append((self.person_id, features))
-                    person_id = self.person_id
-                    person_detection_mapping.append((self.person_id, person_detection))
-                    self.person_id += 1
+                    is_below_threshold = is_same_person(features, emb, threshold=0.9)
+                    #self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
+                    if is_below_threshold:
+                        unconfirmed_below_threshold.append((i, distance, (emb, times_found, time_last_seen)))
+                min_distance = 3  # distance is between 0 and 2
+                best_match = None
+                for i, distance, info_tuple in unconfirmed_below_threshold:
+                    if distance < min_distance:
+                        min_distance = distance
+                        best_match = (i, info_tuple)
+                if best_match is not None:
+                    best_index, (emb, times_found, time_last_seen) = best_match
+                    avg_emb = (features + emb) / 2
+                    new_times_found = times_found + 1
+                    if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
+                        indices_to_remove.append(best_index)
+                        self.person_features_mapping.append((self.person_id, avg_emb))
+                        person_id = self.person_id
+                        self.person_id += 1
+                    found_same_unconfirmed_person = True
+                    self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
+                if len(indices_to_remove) > 0:
+                    self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
+                                                i not in indices_to_remove]
+                    #self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
+                if not found_same_unconfirmed_person:
+                    self.unconfirmed_persons.append((features, 0, time_now))
 
             map_point = self.transform_image_to_frame(bounding_box=person_detection, frame=from_image_to.map_frame)
             if map_point is None:
@@ -143,14 +187,16 @@ class PersonDetector(Node):
             else:
                 person = PersonInfo()
                 person.person_id = person_id
-                person.point = map_point
+                person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
+                person.pose = PoseStamped(header=person_header, pose=map_pose)
                 persons.append(person)
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = 'abc' # TODO change this to the correct frame id of depth sensor
+        header.frame_id = "map" # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=0)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
+        self.get_logger().info("Published")
 
     def transform_image_to_frame(self, bounding_box, frame) -> Optional[Point]: # frame -1: camera angle, 0: camera, 1: robot, 2: map
         stamp = self.depth_stamp
@@ -170,7 +216,6 @@ class PersonDetector(Node):
         bv = VFOV / 2
 
         # Here, if we have a bounding box, we find the position of the object and publish it
-        point = Point()
         # Getting the middle pixel of the bounding box
         # TODO replace with better method
         xp = int(bounding_box[0]) + int(bounding_box[2] / 2)
@@ -250,13 +295,18 @@ class PersonDetector(Node):
         # We transform it to robot/map frame
         map_point = np.dot(R, v) + T
         self.get_logger().info(f"Map point: {map_point}")
-        point.x = map_point[0]
-        point.y = map_point[1]
-        point.z = map_point[2]
+        pose = Pose()
+        pose.position.x = map_point[0]
+        pose.position.y = map_point[1]
+        pose.position.z = map_point[2]
+        pose.orientation.x = transform.transform.rotation.x
+        pose.orientation.y = transform.transform.rotation.y
+        pose.orientation.z = transform.transform.rotation.z
+        pose.orientation.w = transform.transform.rotation.w
 
         #self.old_depth_stamp = self.depth_stamp
 
-        return point
+        return pose
 
     def quaternion_to_rotation_matrix(self, transform):
         w = transform.transform.rotation.w

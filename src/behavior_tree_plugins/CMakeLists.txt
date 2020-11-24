@@ -17,6 +17,7 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(nav2_util REQUIRED)
+
 find_package(nav2_behavior_tree REQUIRED)
 find_package(person_follower_interfaces REQUIRED)
 #find_package(tiago_person_following REQUIRED)
@@ -70,13 +71,13 @@ endif()
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-add_library(${library_name} SHARED
-  src/behavior_tree_engine.cpp
-)
+#add_library(${library_name} SHARED
+#  src/behavior_tree_engine.cpp
+#)
 
-ament_target_dependencies(${library_name}
-  ${dependencies}
-)
+#ament_target_dependencies(${library_name}
+##  ${dependencies}
+#)
 
 add_library(find_human_action SHARED src/find_human_action.cpp)
 list(APPEND plugin_libs find_human_action)
@@ -118,8 +119,7 @@ target_include_directories(is_first_run_condition PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-install(TARGETS ${library_name}
-                ${plugin_libs}
+install(TARGETS ${plugin_libs}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -142,7 +142,6 @@ ament_export_include_directories(
 )
 
 ament_export_libraries(
-  ${library_name}
   ${plugin_libs}
 )
 

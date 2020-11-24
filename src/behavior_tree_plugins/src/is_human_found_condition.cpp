@@ -4,6 +4,8 @@
 #include "behavior_tree_plugins/is_human_found_condition.h"
 #include "behaviortree_cpp_v3/bt_factory.h"
 
+#include "iostream"
+
 
 namespace tiago_person_following
 {
@@ -17,7 +19,9 @@ namespace tiago_person_following
 
   BT::NodeStatus IsHumanFoundCondition::tick()
   {
-    getInput("found_flag", is_human_found_);
+    getInput("found", is_human_found_);
+
+    std::cerr << "Is human found?" << is_human_found_ << std::endl;
 
     if(is_human_found_)
     {

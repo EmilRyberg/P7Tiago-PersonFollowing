@@ -5,6 +5,8 @@ from kalman_action_server.ownKalman import KfTracker
 from rclpy.action import ActionServer
 from rclpy.node import Node
 import numpy as np
+from geometry_msgs.msg import Point, Pose, PoseStamped
+from std_msgs.msg import Header
 
 # Used for sorting the list from the vision module
 def sort_obj_based_on_id(obj):
@@ -23,7 +25,7 @@ class KalmanTracking(Node):
         super().__init__('kalman_action_server')
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
 
-        self._action_server = ActionServer(self, Kalman, 'kalmanTracker', self.action_cb)
+        self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
 
     def detection_cb(self, msg: PersonInfoList):
         time = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9 # Conversion to seconds
@@ -80,9 +82,21 @@ class KalmanTracking(Node):
         result = Kalman.Result() # Creating result message
         
         if self.kf_number != 0: # Making sure atleast one kalman filter is running before indexing
-            result.point.x = self.kf[id].x[0, 0]
-            result.point.y = self.kf[id].x[1, 0]
+            result.pose.x = self.kf[id].x[0, 0]
+            result.pose.y = self.kf[id].x[1, 0]
             result.is_tracked = self.kf[id].isTracked
+        header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
+
+        map_pose = Pose()
+        map_pose.position.x = -0.84
+        map_pose.position.y = -6.5
+        map_pose.position.z = 0.0
+        map_pose.orientation.x = 0.0
+        map_pose.orientation.y = 0.0
+        map_pose.orientation.z = -0.655247
+        map_pose.orientation.w = 0.75541
+        result.pose = PoseStamped(header=header, pose=map_pose)
+        result.is_tracked = False
 
         result.tracked_id = self.tracked_id # Replying which ID is to be tracked, essentially forwarding from earlier
         return result

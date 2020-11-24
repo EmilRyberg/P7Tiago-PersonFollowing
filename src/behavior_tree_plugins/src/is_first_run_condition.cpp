@@ -4,6 +4,9 @@
 #include <string>
 #include "behavior_tree_plugins/is_first_run_condition.h"
 #include "behaviortree_cpp_v3/bt_factory.h"
+#include "nav2_util/geometry_utils.hpp"
+
+#include "iostream"
 
 //Not done yet
 namespace tiago_person_following
@@ -12,15 +15,30 @@ namespace tiago_person_following
   const std::string& condition_name,
   const BT::NodeConfiguration& conf) : BT::ConditionNode(condition_name, conf)
   {
-    //Might need to be some initializing at some point here.
+    /*
+    config().blackboard->set<bool>("found", false);
+    config().blackboard->set<int32_t>("current_id", -1);
+    config().blackboard->set<bool>("first_run_flag", true);
+    config().blackboard->set<bool>("has_moved", false);
+    geometry_msgs::msg::PoseStamped dummy;
+    config().blackboard->set<geometry_msgs::msg::PoseStamped>("person_info", dummy);
+    */
+    
+    first_run_var_ = true;
   }
 
   BT::NodeStatus IsFirstRunCondition::tick()
   {
-    getInput("first_run_flag", is_first_run_);
-
-    if(is_first_run_)
-    {
+    std::cerr << "I first round? " << first_run_var_ << std::endl;
+    if(first_run_var_){
+      
+      setOutput("found", false);
+      geometry_msgs::msg::PoseStamped dummy;
+      setOutput("person_info", dummy);
+      setOutput("current_id", -1);
+      setOutput("moved_flag", false);
+      
+      first_run_var_ = false;
       return BT::NodeStatus::SUCCESS;
     }
     else

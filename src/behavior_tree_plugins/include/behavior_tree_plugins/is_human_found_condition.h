@@ -17,7 +17,7 @@ namespace tiago_person_following
     {
       // This action has a single input port called "message"
       // Any port must have a name. The type is optional.
-      return { BT::InputPort<bool>("target") };
+      return { BT::InputPort<bool>("found") };
     }
 
     // The method that is going to be executed by the thread
