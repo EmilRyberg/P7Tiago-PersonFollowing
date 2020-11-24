@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.time import Time, Duration
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import CompressedImage, Image
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
@@ -253,11 +253,11 @@ class PersonDetector(Node):
                       s_vertical * (dist * c_horizontal)])
 
         if frame == from_image_to.camera_frame:
-            point.x = map_point[0]
-            point.y = map_point[1]
-            point.z = map_point[2]
+            point = Point()
 
-            #self.old_depth_stamp = self.depth_stamp
+            point.x = v[0]
+            point.y = v[1]
+            point.z = v[2]
 
             return point
 
@@ -269,14 +269,14 @@ class PersonDetector(Node):
 
         if frame == from_image_to.robot_frame:
             try:
-                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
+                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', stamp)
             except tf2_ros.ExtrapolationException as e:
                 self.last_error = e
                 self.found_transform = False
                 return None
-        else:
+        elif frame == from_image_to.map_frame:
             try:
-                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', stamp)
+                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
             except tf2_ros.ExtrapolationException as e:
                 self.last_error = e
                 self.found_transform = False
