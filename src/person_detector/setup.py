@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'person_detector = person_detector.person_detector_node:main',
+            'person_detector_head_test = person_detector.person_detector_node:main',
             'person_detector_test = person_detector.person_detector_test_node:main'
         ],
     },

@@ -19,6 +19,7 @@ find_package(std_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(person_follower_interfaces REQUIRED)
 
 # find ROS 1 packages
 set(cmake_extras_files cmake/find_ros1_package.cmake cmake/find_ros1_interface_packages.cmake)
@@ -46,6 +47,7 @@ find_ros1_package(std_msgs REQUIRED)
 find_ros1_package(tf2_msgs REQUIRED)
 find_ros1_package(sensor_msgs REQUIRED)
 find_ros1_package(geometry_msgs REQUIRED)
+find_ros1_package(actionlib REQUIRED)
 
 # find ROS 1 packages with messages / services
 include(cmake/find_ros1_interface_packages.cmake)
@@ -159,6 +161,7 @@ function(custom_executable target)
       "ros1_std_msgs"
       "ros1_tf2_msgs"
       "ros1_sensor_msgs"
+      "ros1_actionlib"
       "geometry_msgs"
       )
   endif()
@@ -201,6 +204,9 @@ custom_executable(compressed_image_1_to_2 "src/compressed_image_1_to_2.cpp"
 custom_executable(depth_1_to_2 "src/depth_1_to_2.cpp"
   ROS1_DEPENDENCIES
   TARGET_DEPENDENCIES "sensor_msgs")
+custom_executable(head_action_2_1 "src/head_action_2_1.cpp"
+  ROS1_DEPENDENCIES
+  TARGET_DEPENDENCIES "person_follower_interfaces")
 
 custom_executable(simple_bridge "src/simple_bridge.cpp"
   ROS1_DEPENDENCIES
@@ -219,6 +225,7 @@ ament_target_dependencies(${PROJECT_NAME}
   "ros1_std_msgs"
   "ros1_tf2_msgs"
   "ros1_sensor_msgs"
+  "ros1_actionlib"
   "ros1_geometry_msgs"
   )
 

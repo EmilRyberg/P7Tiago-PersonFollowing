@@ -2,22 +2,30 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import CompressedImage, Image
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PointStamped
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
 import tf2_ros
 from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
 from person_detector.person_finder.person_finder import PersonFinder
-from person_follower_interfaces.msg import PersonInfoList, PersonInfo
+from person_follower_interfaces.msg import PersonInfoList, PersonInfo, BridgeAction
 import numpy as np
 import math
 from typing import Optional
+from enum import Enum
+from rclpy.action import ActionClient
 
 HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
+
+class from_image_to(Enum):
+    camera_angle = -1
+    camera_frame = 0
+    robot_frame = 1
+    map_frame = 2
 
 
 class CustomDuration: # Hack to make duration for tf2_ros work since it expects 2 fields, sec and nanosec
@@ -71,6 +79,11 @@ class PersonDetector(Node):
         self.last_error = None
         self.get_logger().info("Node started")
 
+        self.id_to_track = -1
+        self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
+        self.move_head(0, 0)
+
+
     def image_callback(self, msg: CompressedImage):
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.image_stamp = msg.header.stamp
@@ -110,18 +123,21 @@ class PersonDetector(Node):
                     self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
                     # print(f"Distance: {distance}")
                     same_person = is_same_person(features, emb, threshold=0.5)
+
                     if same_person:
                         found_same_person = True
                         person_id = pid
                         person_detection_mapping.append((pid, person_detection))
+
                         break
+
                 if not found_same_person:
                     self.person_features_mapping.append((self.person_id, features))
                     person_id = self.person_id
                     person_detection_mapping.append((self.person_id, person_detection))
                     self.person_id += 1
 
-            map_point = self.transform_image_to_map(bounding_box=person_detection)
+            map_point = self.transform_image_to_frame(bounding_box=person_detection, frame=from_image_to.map_frame)
             if map_point is None:
                 self.get_logger().warn(f"Returned map_point is None, skipping person with ID: {person_id}")
             else:
@@ -136,7 +152,7 @@ class PersonDetector(Node):
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
 
-    def transform_image_to_map(self, bounding_box) -> Optional[Point]:
+    def transform_image_to_frame(self, bounding_box, frame) -> Optional[Point]: # frame -1: camera angle, 0: camera, 1: robot, 2: map
         stamp = self.depth_stamp
         self.old_depth_stamp = stamp
         #if self.found_transform or self.first_run:
@@ -146,28 +162,6 @@ class PersonDetector(Node):
         #else:
         #    stamp = self.old_depth_stamp
 
-
-        time_difference = self.depth_stamp.sec + self.depth_stamp.nanosec*1e-9 - (self.old_depth_stamp.sec+self.old_depth_stamp.nanosec*1e-9)
-        if time_difference > 5:
-            self.get_logger().error(f"Images and tf frames are delayed by more than 5s. Last error: {self.last_error}")
-        elif time_difference > 0.5:
-            self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
-
-        try:
-            transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
-        except tf2_ros.ExtrapolationException as e:
-            self.last_error = e
-            self.found_transform = False
-            return None
-        self.found_transform = True
-
-        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, some point: {self.depth_image[int(H/2), int(W/2)]}")
-
-        # Rotation and translation
-        R = self.quaternion_to_rotation_matrix(transform)
-        T = np.array([transform.transform.translation.x,
-                  transform.transform.translation.y,
-                  transform.transform.translation.z])
 
         # Here I made some coefficients for a linear function for calculating the angle for each pixel
         ah = -HFOV / (W - 1)
@@ -197,6 +191,9 @@ class PersonDetector(Node):
         horizontal_angle = ah * xp + bh
         vertical_angle = av * yp + bv
 
+        if frame == from_image_to.camera_angle:
+            return horizontal_angle, vertical_angle
+
         c_horizontal = math.cos(horizontal_angle)
         c_vertical = math.cos(vertical_angle)
         s_horizontal = math.sin(horizontal_angle)
@@ -210,7 +207,47 @@ class PersonDetector(Node):
                       s_horizontal * (dist * c_vertical),
                       s_vertical * (dist * c_horizontal)])
 
-        # We transform it to map frame
+        if frame == from_image_to.camera_frame:
+            point.x = map_point[0]
+            point.y = map_point[1]
+            point.z = map_point[2]
+
+            #self.old_depth_stamp = self.depth_stamp
+
+            return point
+
+        time_difference = self.depth_stamp.sec + self.depth_stamp.nanosec*1e-9 - (self.old_depth_stamp.sec+self.old_depth_stamp.nanosec*1e-9)
+        if time_difference > 5:
+            self.get_logger().error(f"Images and tf frames are delayed by more than 5s. Last error: {self.last_error}")
+        elif time_difference > 0.5:
+            self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
+
+        if frame == from_image_to.robot_frame:
+            try:
+                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
+            except tf2_ros.ExtrapolationException as e:
+                self.last_error = e
+                self.found_transform = False
+                return None
+        else:
+            try:
+                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', stamp)
+            except tf2_ros.ExtrapolationException as e:
+                self.last_error = e
+                self.found_transform = False
+                return None
+                
+        self.found_transform = True
+
+        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, some point: {self.depth_image[int(H/2), int(W/2)]}")
+
+        # Rotation and translation
+        R = self.quaternion_to_rotation_matrix(transform)
+        T = np.array([transform.transform.translation.x,
+                  transform.transform.translation.y,
+                  transform.transform.translation.z])
+
+        # We transform it to robot/map frame
         map_point = np.dot(R, v) + T
         self.get_logger().info(f"Map point: {map_point}")
         point.x = map_point[0]
@@ -239,6 +276,31 @@ class PersonDetector(Node):
                [[ 1.0-(yY+zZ), xY-wZ, xZ+wY ],
                 [ xY+wZ, 1.0-(xX+zZ), yZ-wX ],
                 [ xZ-wY, yZ+wX, 1.0-(xX+yY) ]])
+
+
+    def is_person_to_track(self, id, x, y):
+        if not self.id_to_track == -1:
+            return
+
+        angle = np.arctan2(y, x)
+
+        if x < 1.25 and np.abs(angle) < 0.3491:
+            self.id_to_track = id
+
+
+
+    def move_head(self, horizontal, vertical):
+        msg = BridgeAction()
+
+        msg.point.x = horizontal
+        msg.point.y = vertical
+        msg.point.z = 1.
+
+        msg.min_duration = 0.1
+        msg.max_velocity = 25
+
+        self.head_pub.publish(msg)
+
 
 
 def main(args=None):
