@@ -18,14 +18,12 @@ namespace tiago_person_following
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
     RCLCPP_INFO(node_->get_logger(), "abc");
-    std::cerr << "heyo" << std::endl;
     look_for_id = -1; //i.e. dont look for a specific ID, but look and track a human and return with the ID
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
     RCLCPP_INFO(node_->get_logger(), "TICK TOCK but in on_tick");
-    std::cerr << "heyo2" << std::endl;
     goal_.id = look_for_id;  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
   }  
 
@@ -46,9 +44,9 @@ namespace tiago_person_following
     person_id = result_.result->tracked_id;
 
     setOutput("current_id", person_id);
-    setOutput("person_info", pose);
+    setOutput("person_info", result_.result->pose);
     RCLCPP_INFO(node_->get_logger(), "Pose x: %f", pose.pose.position.x);
-    setOutput("goal", pose);
+    setOutput("goal", result_.result->pose);
     setOutput("found", true);
     setOutput("first_run_flag", false);
     return BT::NodeStatus::SUCCESS;
