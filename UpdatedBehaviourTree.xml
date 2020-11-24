@@ -5,10 +5,11 @@
 		<Repeat num_cycles="9999999">
 			<Fallback>
 				<Sequence>
-					<IsFirstRun ID="isFirstRun" />
+					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" />
 					<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}"/>
 				</Sequence>
 				<Sequence>
+					<LoggerAction goal="{goal}" />
 					<IsHumanFound ID="isHumanFound" found="{found}"/>
 					<RecoveryNode number_of_retries="6" name="NavigateRecovery">
 						<PipelineSequence name="NavigateWithReplanning">

@@ -23,21 +23,18 @@ namespace tiago_person_following
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
-    RCLCPP_INFO(node_->get_logger(), "TICK TOCK but in on_tick");
+    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
     goal_.id = look_for_id;  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
   }  
 
   //code that runs when waiting for result
   void FindHumanAction::on_wait_for_result()
   {
-    std::cerr << "heyo3" << std::endl;
-    RCLCPP_INFO(node_->get_logger(), "TICK TOCK 123");
   }
 
   //code that runs when the action server returns a success result
   BT::NodeStatus FindHumanAction::on_success()
   {
-    std::cerr << "heyo4" << std::endl;
     RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
 
     pose = result_.result->pose;

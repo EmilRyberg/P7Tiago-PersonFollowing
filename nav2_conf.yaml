@@ -89,6 +89,7 @@ bt_navigator:
     - has_moved_condition
     - is_human_found_condition
     - is_first_run_condition
+    - logger_action
 
 bt_navigator_rclcpp_node:
   ros__parameters:
