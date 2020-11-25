@@ -75,10 +75,10 @@ class PersonDetector(Node):
         self.first_run = True
         self.found_transform = False
         self.last_error = None
-        self.get_logger().info("Node started")
 
         self.id_to_track = -1
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
+
         self.get_logger().info("Subscribing to topics")
         self.image_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_images",
@@ -88,6 +88,7 @@ class PersonDetector(Node):
                                                          "/depth",
                                                          self.depth_callback,
                                                          qos_profile)
+        self.get_logger().info("Node started")
 
     def image_callback(self, msg: CompressedImage):
         print("Image")
@@ -332,7 +333,7 @@ class PersonDetector(Node):
                 [ xZ-wY, yZ+wX, 1.0-(xX+yY) ]])
 
 
-    def is_person_to_track(self, id, x, y):
+    def is_person_to_track(self, id, x, y): # x, y in robot_frame
         if not self.id_to_track == -1:
             return
 
