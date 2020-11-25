@@ -10,7 +10,7 @@ from cv_bridge import CvBridge
 import tf2_ros
 from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
 from person_detector.person_finder.person_finder import PersonFinder
-from person_follower_interfaces.msg import PersonInfoList, PersonInfo, BridgeAction
+from person_follower_interfaces.msg import PersonInfoList, PersonInfo
 import numpy as np
 import math
 from typing import Optional
@@ -25,11 +25,12 @@ H = 480
 UNCONFIRMED_COUNT_THRESHOLD = 3
 UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
 
-class from_image_to(Enum):
-    camera_angle = -1
-    camera_frame = 0
-    robot_frame = 1
-    map_frame = 2
+
+class ImageToFrameEnum(Enum):
+    CAMERA_ANGLE = 0
+    CAMERA_FRAME = 1
+    ROBOT_FRAME = 2
+    MAP_FRAME = 3
 
 
 class CustomDuration: # Hack to make duration for tf2_ros work since it expects 2 fields, sec and nanosec
@@ -76,9 +77,6 @@ class PersonDetector(Node):
         self.found_transform = False
         self.last_error = None
 
-        self.id_to_track = -1
-        self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
-
         self.get_logger().info("Subscribing to topics")
         self.image_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_images",
@@ -91,21 +89,17 @@ class PersonDetector(Node):
         self.get_logger().info("Node started")
 
     def image_callback(self, msg: CompressedImage):
-        print("Image")
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.image_stamp = msg.header.stamp
         self.image_is_updated = True
         self.got_image_callback()
-        print("Image2")
 
     def depth_callback(self, msg: Image):
-        print("Imaged")
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        self.get_logger().info(f"got depth image")
+        #self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
         self.got_image_callback()
-        print("Imaged2")
 
     def got_image_callback(self):
         if not self.image_is_updated or not self.depth_is_updated:
@@ -116,6 +110,7 @@ class PersonDetector(Node):
         self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
         persons = []
+        id_to_track = -1
         for person_detection in person_detections:
             cropped_person_img = self.person_finder.crop_bounding_box(self.image, person_detection)
             features = self.feature_extractor.get_features(cropped_person_img)
@@ -124,7 +119,7 @@ class PersonDetector(Node):
             person_id = None
             for i, (pid, emb) in enumerate(self.person_features_mapping):
                 distance = embedding_distance(features, emb)
-                self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+                #self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
                 # print(f"Distance: {distance}")
                 is_below_threshold = is_same_person(features, emb, threshold=0.9)
                 if is_below_threshold:
@@ -134,6 +129,7 @@ class PersonDetector(Node):
                 min_distance = 3  # distance is between 0 and 2
                 best_match = None
                 best_index = None
+                best_person_id = None
                 for pid, distance, person_detection, index in features_below_threshold:
                     if distance < min_distance:
                         min_distance = distance
@@ -186,7 +182,10 @@ class PersonDetector(Node):
                 if not found_same_unconfirmed_person:
                     self.unconfirmed_persons.append((features, 0, time_now))
             if person_id is not None:
-                map_pose = self.transform_image_to_map(bounding_box=person_detection)
+                map_pose = self.transform_image_to_frame(bounding_box=person_detection, frame=ImageToFrameEnum.MAP_FRAME)
+                robot_pose = self.transform_image_to_frame(bounding_box=person_detection, frame=ImageToFrameEnum.ROBOT_FRAME)
+                horizontal_angle, vertical_angle = self.transform_image_to_frame(bounding_box=person_detection,
+                                                                                 frame=ImageToFrameEnum.CAMERA_ANGLE)
                 if map_pose is None:
                     self.get_logger().warn(f"Returned map_pose is None, skipping person with ID: {person_id}")
                 else:
@@ -195,15 +194,24 @@ class PersonDetector(Node):
                     person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
                     persons.append(person)
+
+                    if robot_pose is not None:
+                        if self.is_person_to_track(robot_pose.position.x, robot_pose.position.y):
+                            id_to_track = person_id
+
+                    person.horizontal_angle = horizontal_angle
+                    person.vertical_angle = vertical_angle
+                    
+
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = "map" # TODO change this to the correct frame id of depth sensor
-        person_info = PersonInfoList(header=header, persons=persons, tracked_id=0)
+        header.frame_id = "map"  # TODO change this to the correct frame id of depth sensor
+        person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
         self.get_logger().info("Published")
 
-    def transform_image_to_frame(self, bounding_box, frame) -> Optional[Point]: # frame -1: camera angle, 0: camera, 1: robot, 2: map
+    def transform_image_to_frame(self, bounding_box, frame):
         stamp = self.depth_stamp
         self.old_depth_stamp = stamp
         #if self.found_transform or self.first_run:
@@ -241,7 +249,7 @@ class PersonDetector(Node):
         horizontal_angle = ah * xp + bh
         vertical_angle = av * yp + bv
 
-        if frame == from_image_to.camera_angle:
+        if frame == ImageToFrameEnum.CAMERA_ANGLE:
             return horizontal_angle, vertical_angle
 
         c_horizontal = math.cos(horizontal_angle)
@@ -249,15 +257,15 @@ class PersonDetector(Node):
         s_horizontal = math.sin(horizontal_angle)
         s_vertical = math.sin(vertical_angle)
 
-        self.get_logger().info(f"ha : {horizontal_angle}, va: {vertical_angle}, dist: {dist}, c_h: {c_horizontal}\n"
-                               f"c_v: {c_vertical} s_h: {s_horizontal} s_v: {s_vertical}")
+        #self.get_logger().info(f"ha : {horizontal_angle}, va: {vertical_angle}, dist: {dist}, c_h: {c_horizontal}\n"
+        #                       f"c_v: {c_vertical} s_h: {s_horizontal} s_v: {s_vertical}")
 
         # We get the x, y, z in the camera frame
         v = np.array([c_horizontal * (dist * c_vertical),
                       s_horizontal * (dist * c_vertical),
                       s_vertical * (dist * c_horizontal)])
 
-        if frame == from_image_to.camera_frame:
+        if frame == ImageToFrameEnum.CAMERA_FRAME:
             point = Point()
 
             point.x = v[0]
@@ -272,14 +280,15 @@ class PersonDetector(Node):
         elif time_difference > 0.5:
             self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
 
-        if frame == from_image_to.robot_frame:
+        transform = None
+        if frame == ImageToFrameEnum.ROBOT_FRAME:
             try:
                 transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', stamp)
             except tf2_ros.ExtrapolationException as e:
                 self.last_error = e
                 self.found_transform = False
                 return None
-        elif frame == from_image_to.map_frame:
+        elif frame == ImageToFrameEnum.MAP_FRAME:
             try:
                 transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
             except tf2_ros.ExtrapolationException as e:
@@ -289,7 +298,7 @@ class PersonDetector(Node):
                 
         self.found_transform = True
 
-        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, some point: {self.depth_image[int(H/2), int(W/2)]}")
+        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[yp, xp]}")
 
         # Rotation and translation
         R = self.quaternion_to_rotation_matrix(transform)
@@ -332,30 +341,9 @@ class PersonDetector(Node):
                 [ xY+wZ, 1.0-(xX+zZ), yZ-wX ],
                 [ xZ-wY, yZ+wX, 1.0-(xX+yY) ]])
 
-
-    def is_person_to_track(self, id, x, y): # x, y in robot_frame
-        if not self.id_to_track == -1:
-            return
-
+    def is_person_to_track(self, x, y): # x, y in robot_frame
         angle = np.arctan2(y, x)
-
-        if x < 1.25 and np.abs(angle) < 0.3491:
-            self.id_to_track = id
-
-
-
-    def move_head(self, horizontal, vertical):
-        msg = BridgeAction()
-
-        msg.point.x = -horizontal # Makes it go left on positive
-        msg.point.y = -vertical   # Makes it go up on positive
-        msg.point.z = 1.
-
-        msg.min_duration = 0.5
-        msg.max_velocity = 25.
-
-        self.head_pub.publish(msg)
-
+        return x < 1.25 and np.abs(angle) < 0.3491
 
 
 def main(args=None):
