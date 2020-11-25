@@ -30,6 +30,7 @@ namespace tiago_person_following
   //code that runs when waiting for result
   void FindHumanAction::on_wait_for_result()
   {
+    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Waiting for result");
   }
 
   //code that runs when the action server returns a success result
@@ -42,7 +43,7 @@ namespace tiago_person_following
 
     setOutput("current_id", person_id);
     setOutput("person_info", result_.result->pose);
-    RCLCPP_INFO(node_->get_logger(), "Pose x: %f", pose.pose.position.x);
+    RCLCPP_INFO(node_->get_logger(), "Pose x: %f, pose y: %f", pose.pose.position.x, pose.pose.position.y);
     setOutput("goal", result_.result->pose);
     setOutput("found", true);
     setOutput("first_run_flag", false);
