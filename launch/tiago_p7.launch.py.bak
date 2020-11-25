@@ -26,9 +26,7 @@ def generate_launch_description():
     kalman = launch_ros.actions.Node(
         package='kalman_action_server', executable='main', output='screen')
     detector = launch_ros.actions.Node(
-        package='person_detector', executable='person_detector', output='screen', parameters=[{"feature_weights_path": "triplet_weights.pth"},
-												{"yolo_weights_path": "yolov3.weights"}
-												])
+        package='person_detector', executable='person_detector', output='screen', parameters=[{"--ros-args": "-p feature_weights_path:=triplet_weights.pth -p yolo_weights_path:=yolov3.weights -p on_gpu:=false"}])
     marathon_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(marathon_launch_dir, 'nav2_tiago_launch.py')),
         launch_arguments={'map': 'map.yaml',
