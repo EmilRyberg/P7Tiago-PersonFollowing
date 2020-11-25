@@ -28,6 +28,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/PersonInfo.msg"
   "msg/PersonInfoList.msg"
+  "msg/BridgeAction.msg"
   "action/Kalman.action"
   DEPENDENCIES builtin_interfaces geometry_msgs std_msgs
 )

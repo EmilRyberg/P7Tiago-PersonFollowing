@@ -6,25 +6,25 @@ from person_detector.person_finder.yolo_utils import non_max_suppression, rescal
 
 
 def pad_to_square(img, pad_value):
-    c, h, w = img.shape
-    dim_diff = np.abs(h - w)
-    # (upper / left) padding and (lower / right) padding
-    pad1, pad2 = dim_diff // 2, dim_diff - dim_diff // 2
-    # Determine padding
-    pad = (0, 0, pad1, pad2) if h <= w else (pad1, pad2, 0, 0)
-    # Add padding
-    img = F.pad(img, pad, "constant", value=pad_value)
-    return img, pad
+	c, h, w = img.shape
+	dim_diff = np.abs(h - w)
+	# (upper / left) padding and (lower / right) padding
+	pad1, pad2 = dim_diff // 2, dim_diff - dim_diff // 2
+	# Determine padding
+	pad = (0, 0, pad1, pad2) if h <= w else (pad1, pad2, 0, 0)
+	# Add padding
+	img = F.pad(img, pad, "constant", value=pad_value)
+	return img, pad
 
 
 class PersonFinder:
-    def __init__(self, yolo_weights_dir, on_gpu=True):
-        self.model = YOLOv3(80)
-        self.model.load_weights(yolo_weights_dir)
-        self.model.eval()
-        self.on_gpu = on_gpu
-        if on_gpu:
-            self.model.cuda()
+	def __init__(self, yolo_weights_dir, on_gpu=True):
+		self.model = YOLOv3(80)
+		self.model.load_weights(yolo_weights_dir)
+		self.model.eval()
+		self.on_gpu = on_gpu
+		if on_gpu:
+			self.model.cuda()
 
     def crop_bounding_box(self, np_image, detection):
         x1, y1, x2, y2, conf, cls_conf, cls_pred = detection

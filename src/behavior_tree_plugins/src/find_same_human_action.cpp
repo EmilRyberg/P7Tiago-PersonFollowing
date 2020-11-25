@@ -41,8 +41,9 @@ namespace tiago_person_following
 
     RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
 
-    pose = result_.result->pose;
-    setOutput("person_info", pose);
+    //pose = result_.result->pose;
+    setOutput("person_info", result_.result->pose);
+    setOutput("goal", result_.result->pose);
     setOutput("found", true);
     return BT::NodeStatus::SUCCESS;
   }
