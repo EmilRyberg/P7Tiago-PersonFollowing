@@ -4,10 +4,16 @@
 	<BehaviorTree ID="BehaviorTree">
 		<Repeat num_cycles="9999999">
 			<Fallback>
+
+				<!-- init -->
 				<Sequence>
 					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" />
-					<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+					<RateController hz="1.0">
+						<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+					</RateController>
 				</Sequence>
+
+				<!-- main loop -->
 				<Sequence>
 					<IsHumanFound ID="isHumanFound" found="{found}"/>
 					<RecoveryNode number_of_retries="6" name="NavigateRecovery">
@@ -33,8 +39,12 @@
 							</SequenceStar>
 						</ReactiveFallback>
 					</RecoveryNode>
-					<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+					<RateController hz="1.0">
+						<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+					</RateController>
 				</Sequence>
+
+				<!-- recovery -->
 				<Sequence>
 					<Fallback>
 						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}"/>
@@ -65,8 +75,11 @@
 							<SetBlackboard name="" output_key="{moved_flag}" value="true"/>
 						</Sequence>
 					</Fallback>
-					<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+					<RateController hz="1.0">
+						<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+					</RateController>
 				</Sequence>
+
 			</Fallback>
 		</Repeat>
 	</BehaviorTree>

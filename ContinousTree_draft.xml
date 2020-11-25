@@ -6,7 +6,9 @@
 			<Fallback>
 				<Sequence>
 					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" />
-					<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+					<RateController hz="1.0">
+						<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+					</RateController>
 				</Sequence>
 				<Sequence>
 					<IsHumanFound ID="isHumanFound" found="{found}"/>
@@ -19,7 +21,9 @@
 									<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
 								</RecoveryNode>
 							</RateController>
-							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+							<RateController hz="1.0">
+								<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+							</RateController>
 							<RecoveryNode number_of_retries="1" name="FollowPath">
 								<FollowPath path="{path}" controller_id="FollowPath"/>
 								<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
@@ -30,7 +34,9 @@
 							<SequenceStar name="RecoveryActions">
 								<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
 								<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
-								<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+								<RateController hz="1.0">
+									<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}"/>
+								</RateController>
 								<Spin spin_dist="1.57"/>
 								<Wait wait_duration="5"/>
 							</SequenceStar>
@@ -69,7 +75,9 @@
 					</Fallback>
 					<RecoveryNode number_of_retries="10" name="RefindHuman">
 						<IsHumanFound ID="isHumanFound" found="{found}"/>
-						<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+						<RateController hz="1.0">
+							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+						</RateController>
 					</RecoveryNode>
 				</Sequence>
 			</Fallback>
