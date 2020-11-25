@@ -53,15 +53,6 @@ class PersonDetector(Node):
         yolo_weights_path = os.path.expanduser(yolo_weights_path)
         on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
 
-        self.get_logger().info("Subscribing to topics")
-        self.image_subscriber = self.create_subscription(CompressedImage,
-                                                         "/compressed_images",
-                                                         self.image_callback,
-                                                         qos_profile)
-        self.depth_subscriber = self.create_subscription(Image,
-                                                         "/depth",
-                                                         self.depth_callback,
-                                                         qos_profile)
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
         self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
@@ -88,6 +79,15 @@ class PersonDetector(Node):
 
         self.id_to_track = -1
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
+        self.get_logger().info("Subscribing to topics")
+        self.image_subscriber = self.create_subscription(CompressedImage,
+                                                         "/compressed_images",
+                                                         self.image_callback,
+                                                         qos_profile)
+        self.depth_subscriber = self.create_subscription(Image,
+                                                         "/depth",
+                                                         self.depth_callback,
+                                                         qos_profile)
 
     def image_callback(self, msg: CompressedImage):
         print("Image")
