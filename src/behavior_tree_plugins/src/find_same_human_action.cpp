@@ -20,8 +20,8 @@ namespace tiago_person_following
   void FindSameHumanAction::on_tick() //what the node has to do everyime it runs
   {
     getInput("current_id", current_id);  //sends the request to find person with id, this line may have to be in the on_tick() function instead
+    RCLCPP_INFO(node_->get_logger(), "FindSameHuman: current_id: %d", current_id);
     goal_.id = current_id;
-    RCLCPP_INFO(node_->get_logger(), "I sure like to tick");
   }  
 
   //code that runs when waiting for result

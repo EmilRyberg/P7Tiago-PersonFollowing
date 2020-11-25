@@ -94,6 +94,9 @@ list(APPEND plugin_libs is_human_found_condition)
 add_library(is_first_run_condition SHARED src/is_first_run_condition.cpp)
 list(APPEND plugin_libs is_first_run_condition)
 
+add_library(logger_action SHARED src/logger_action.cpp)
+list(APPEND plugin_libs logger_action)
+
 foreach(bt_plugin ${plugin_libs})
   ament_target_dependencies(${bt_plugin} ${dependencies})
   target_compile_definitions(${bt_plugin} PRIVATE BT_PLUGIN_EXPORT)
@@ -116,6 +119,10 @@ target_include_directories(is_human_found_condition PUBLIC
   $<INSTALL_INTERFACE:include>)
 
 target_include_directories(is_first_run_condition PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+target_include_directories(logger_action PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 

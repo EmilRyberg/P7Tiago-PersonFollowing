@@ -23,7 +23,7 @@ W = 640
 VFOV = 0.785398163397448
 H = 480
 UNCONFIRMED_COUNT_THRESHOLD = 3
-UNCONFIRMED_TIME_THRESHOLD_SECONDS = 5  # secs
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
 
 class from_image_to(Enum):
     camera_angle = -1
@@ -138,6 +138,7 @@ class PersonDetector(Node):
                 for pid, distance, person_detection, index in features_below_threshold:
                     if distance < min_distance:
                         min_distance = distance
+                        best_match = (person_detection, pid)
                         best_person_id = pid
                         best_index = index
                 current_person_id, current_features = self.person_features_mapping[best_index]
@@ -185,16 +186,16 @@ class PersonDetector(Node):
                     #self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
                 if not found_same_unconfirmed_person:
                     self.unconfirmed_persons.append((features, 0, time_now))
-
-            map_point = self.transform_image_to_frame(bounding_box=person_detection, frame=from_image_to.map_frame)
-            if map_point is None:
-                self.get_logger().warn(f"Returned map_point is None, skipping person with ID: {person_id}")
-            else:
-                person = PersonInfo()
-                person.person_id = person_id
-                person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
-                person.pose = PoseStamped(header=person_header, pose=map_pose)
-                persons.append(person)
+            if person_id is not None:
+                map_pose = self.transform_image_to_map(bounding_box=person_detection)
+                if map_pose is None:
+                    self.get_logger().warn(f"Returned map_pose is None, skipping person with ID: {person_id}")
+                else:
+                    person = PersonInfo()
+                    person.person_id = person_id
+                    person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
+                    person.pose = PoseStamped(header=person_header, pose=map_pose)
+                    persons.append(person)
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = "map" # TODO change this to the correct frame id of depth sensor

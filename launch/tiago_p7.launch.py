@@ -1,0 +1,42 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory, get_package_prefix
+
+from launch import LaunchDescription
+from launch.actions import (DeclareLaunchArgument, EmitEvent, ExecuteProcess,
+                            IncludeLaunchDescription, RegisterEventHandler)
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+
+from launch_ros.actions import Node
+from launch.substitutions import EnvironmentVariable
+import launch_ros.actions
+import pathlib
+
+
+def generate_launch_description():
+
+    marathon_dir = get_package_share_directory('marathon_ros2_bringup')
+    marathon_launch_dir = os.path.join(marathon_dir, 'launch/tiago')
+
+
+    kalman = launch_ros.actions.Node(
+        package='kalman_action_server', executable='main', output='screen')
+    detector = launch_ros.actions.Node(
+        package='person_detector', executable='person_detector', output='screen', parameters=[{"--ros-args": "-p feature_weights_path:=triplet_weights.pth -p yolo_weights_path:=yolov3.weights"}])
+    marathon_cmd = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(os.path.join(marathon_launch_dir, 'nav2_tiago_launch.py')),
+        launch_arguments={'map': 'map.yaml',
+                          'params_file': 'nav2_conf.yaml',
+			   'use_rviz': 'false'}.items())
+
+    ld = LaunchDescription()
+
+    # Declare the launch options
+    ld.add_action(kalman)
+    ld.add_action(detector)
+    ld.add_action(marathon_cmd)
+    return ld

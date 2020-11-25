@@ -14,17 +14,12 @@ def sort_obj_based_on_id(obj):
 
 class KalmanTracking(Node):
 
-    kf = list()
-    kf_number = 0
-
-    # Which ID to follow
-    tracked_id = -1
-
     def __init__(self):
-
         super().__init__('kalman_action_server')
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
-
+        self.kf = []
+        self.kf_number = 0
+        self.tracked_id = -1
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
 
     def detection_cb(self, msg: PersonInfoList):
@@ -55,8 +50,8 @@ class KalmanTracking(Node):
                 self.kf[i].predict(time)
 
                 # Getting the measured position into the right format
-                mPos = np.array([[persons[newPersonIdx].point.x],
-                                 [persons[newPersonIdx].point.y]])
+                mPos = np.array([[persons[newPersonIdx].pose.pose.position.x],
+                                 [persons[newPersonIdx].pose.pose.position.y]])
 
                 self.kf[i].update(mPos)
                 
@@ -66,8 +61,8 @@ class KalmanTracking(Node):
             # When a new ID has come
             else:
                 # Getting the measured position into the right format
-                mPos = np.array([persons[newPersonIdx].point.x, 
-                                 persons[newPersonIdx].point.y])
+                mPos = np.array([persons[newPersonIdx].pose.pose.position.x, 
+                                 persons[newPersonIdx].pose.pose.position.y])
 
                 self.kf.append(KfTracker(mPos, time))
                 self.kf_number += 1
@@ -76,27 +71,40 @@ class KalmanTracking(Node):
 
     def action_cb(self, cb_handle):
         id = cb_handle.request.id
-
-        cb_handle.succeed() # Saying the goal was accomplished
+        self.get_logger().info(f"Got ID: {id}")
 
         result = Kalman.Result() # Creating result message
-        
-        if self.kf_number != 0: # Making sure atleast one kalman filter is running before indexing
-            result.pose.x = self.kf[id].x[0, 0]
-            result.pose.y = self.kf[id].x[1, 0]
-            result.is_tracked = self.kf[id].isTracked
+        if id == -1:
+            id = 0
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
-
         map_pose = Pose()
-        map_pose.position.x = -0.84
-        map_pose.position.y = -6.5
-        map_pose.position.z = 0.0
-        map_pose.orientation.x = 0.0
-        map_pose.orientation.y = 0.0
-        map_pose.orientation.z = -0.655247
-        map_pose.orientation.w = 0.75541
-        result.pose = PoseStamped(header=header, pose=map_pose)
-        result.is_tracked = False
+        if self.kf_number != 0: # Making sure atleast one kalman filter is running before indexing
+            self.get_logger().info(f"Sending goal: {self.kf[id].x[0, 0]} - {self.kf[id].x[1, 0]}")
+            map_pose.position.x = self.kf[id].x[0, 0]
+            map_pose.position.y = self.kf[id].x[1, 0]
+            map_pose.position.z = 0.0
+            map_pose.orientation.x = 0.0
+            map_pose.orientation.y = 0.0
+            map_pose.orientation.z = -0.655247
+            map_pose.orientation.w = 0.75541
+            result.pose = PoseStamped(header=header, pose=map_pose)
+            result.is_tracked = self.kf[id].isTracked
+
+
+        #map_pose = Pose()
+        #map_pose.position.x = -0.84
+        #map_pose.position.y = -6.5
+        # map_pose.position.z = 0.0
+        # map_pose.orientation.x = 0.0
+        # map_pose.orientation.y = 0.0
+        # map_pose.orientation.z = -0.655247
+        # map_pose.orientation.w = 0.75541
+        # result.pose = PoseStamped(header=header, pose=map_pose)
+        # result.is_tracked = False
+
+        self.get_logger().info("Returning point")
+
+        cb_handle.succeed() # Saying the goal was accomplished
 
         result.tracked_id = self.tracked_id # Replying which ID is to be tracked, essentially forwarding from earlier
         return result
