@@ -198,6 +198,9 @@ custom_executable(imu_1_to_2 "src/imu_1_to_2.cpp"
 custom_executable(compressed_image_1_to_2 "src/compressed_image_1_to_2.cpp"
   ROS1_DEPENDENCIES
   TARGET_DEPENDENCIES "sensor_msgs")
+custom_executable(compressed_depth_image_1_to_2 "src/compressed_depth_image_1_to_2.cpp"
+  ROS1_DEPENDENCIES
+  TARGET_DEPENDENCIES "sensor_msgs")
 custom_executable(depth_1_to_2 "src/depth_1_to_2.cpp"
   ROS1_DEPENDENCIES
   TARGET_DEPENDENCIES "sensor_msgs")
