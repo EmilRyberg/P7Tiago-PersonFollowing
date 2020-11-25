@@ -30,10 +30,12 @@ class PersonFinder:
         x1, y1, x2, y2, conf, cls_conf, cls_pred = detection
         box_w = x2 - x1
         box_h = y2 - y1
+        img_h = np_image.shape[0]
+        img_w = np_image.shape[1]
         ix1 = max(0, int(x1))
-        ix2 = max(0, int(x2))
+        ix2 = min(img_w-1, int(x2))
         iy1 = max(0, int(y1))
-        iy2 = max(0, int(y2))
+        iy2 = min(img_h-1, int(y2))
         cropped_img = np.array(np_image[iy1:iy2, ix1:ix2, :])
         return cropped_img
 
@@ -49,7 +51,13 @@ class PersonFinder:
         detections = detections[0]
         if detections is not None:
             detections = rescale_boxes(detections, 416, np_image.shape[:2])
+            for detection in detections:
+                detection[0] = max(0, int(detection[0]))
+                detection[1] = max(0, int(detection[1]))
+                detection[2] = min(np_image.shape[1], int(detection[2]))
+                detection[3] = min(np_image.shape[0], int(detection[3]))
             person_dets = [det for det in detections if int(det[6]) == 0]  # Detection of ID 0 is person
+
             return person_dets
         else:
             return []

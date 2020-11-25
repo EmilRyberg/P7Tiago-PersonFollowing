@@ -229,14 +229,7 @@ class PersonDetector(Node):
         # Here, if we have a bounding box, we find the position of the object and publish it
         # Getting the middle pixel of the bounding box
         # TODO replace with better method
-        xp = int(bounding_box[0]) + int(bounding_box[2] / 2)
-        yp = int(bounding_box[1]) + int(bounding_box[3] / 2)
-
-        # The middle pixel can be outside the frame, so we stop that
-        xp = W - 1 if xp >= W else xp
-        xp = 0 if xp < 0 else xp
-        yp = H - 1 if yp >= H else yp
-        yp = 0 if yp < 0 else yp
+        dist = self.read_depth(self.depth_image, bounding_box)
 
         # Getting the distance to the target
         dist = self.depth_image.item(yp, xp)
@@ -294,6 +287,25 @@ class PersonDetector(Node):
                [[ 1.0-(yY+zZ), xY-wZ, xZ+wY ],
                 [ xY+wZ, 1.0-(xX+zZ), yZ-wX ],
                 [ xZ-wY, yZ+wX, 1.0-(xX+yY) ]])
+
+    def read_depth(self, dImg, bbox):
+        centerx=int((bbox[0]+bbox[2])/2)
+        centery=int((bbox[1]+bbox[3])/2)
+        x1 = centerx - 10
+        y1 = centery - 10
+        x2 = centerx + 10
+        y2 = centery + 10
+        count = 0
+        dist = 0
+        while x1 <= x2:
+            while y1 <= y2:
+                if not np.isnan(dImg.item(y1, x1)):
+                    dist = dist + dImg.item(y1, x1)
+                    count+=1
+                y1 = y1 + 1
+            x1 = x1 + 1
+        average_depth = dist / count
+        return average_depth
 
 
 def main(args=None):
