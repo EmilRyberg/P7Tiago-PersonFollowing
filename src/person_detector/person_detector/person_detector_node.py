@@ -103,7 +103,7 @@ class PersonDetector(Node):
         self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
-        #self.got_image_callback()
+        self.got_image_callback()
         print("Imaged2")
 
     def got_image_callback(self):
@@ -111,8 +111,6 @@ class PersonDetector(Node):
             return
         self.image_is_updated = False
         self.depth_is_updated = False
-
-        self.move_head(0.05, 0)
 
         self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
