@@ -1,5 +1,5 @@
 import rclpy
-from person_follower_interfaces.msg import PersonInfoList
+from person_follower_interfaces.msg import PersonInfoList, BridgeAction
 from person_follower_interfaces.action import *
 from kalman_action_server.ownKalman import KfTracker
 from rclpy.action import ActionServer
@@ -19,14 +19,16 @@ class KalmanTracking(Node):
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
         self.kf = []
         self.kf_number = 0
+        self.should_track_id = -1
         self.tracked_id = -1
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
+        self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
 
     def detection_cb(self, msg: PersonInfoList):
         time = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9 # Conversion to seconds
         persons = msg.persons
         persons.sort(key=sort_obj_based_on_id) # Sorting based on ID
-        self.tracked_id = msg.tracked_id
+        self.should_track_id = msg.tracked_id
 
         if len(persons) == 0: # If no new IDs have come, these are simply updated
             for i in range(self.kf_number):
@@ -69,13 +71,23 @@ class KalmanTracking(Node):
                 
                 newPersonIdx += 1
 
+        #### move camera
+        if self.tracked_id != -1:
+            tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
+            if tracked_person is not None:
+                self.move_head(tracked_person.horizontal_angle)
+
+
     def action_cb(self, cb_handle):
         id = cb_handle.request.id
         self.get_logger().info(f"Got ID: {id}")
 
         result = Kalman.Result() # Creating result message
+
         if id == -1:
-            id = 0
+            id = self.should_track_id
+        self.tracked_id = id
+
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
         map_pose = Pose()
         if self.kf_number != 0: # Making sure atleast one kalman filter is running before indexing
@@ -104,11 +116,22 @@ class KalmanTracking(Node):
 
         self.get_logger().info("Returning point")
 
-        cb_handle.succeed() # Saying the goal was accomplished
+        cb_handle.succeed()  # Saying the goal was accomplished
 
-        result.tracked_id = self.tracked_id # Replying which ID is to be tracked, essentially forwarding from earlier
+        result.tracked_id = id  # Replying which ID is to be tracked, essentially forwarding from earlier
         return result
 
+    def move_head(self, horizontal, vertical = 0):
+        msg = BridgeAction()
+
+        msg.point.x = -horizontal # Makes it go left on positive
+        msg.point.y = 0 #-vertical   # Makes it go up on positive
+        msg.point.z = 1.
+
+        msg.min_duration = 0.5
+        msg.max_velocity = 25.
+
+        self.head_pub.publish(msg)
 
 def main():
     rclpy.init()
