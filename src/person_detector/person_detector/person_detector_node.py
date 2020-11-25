@@ -16,6 +16,7 @@ import math
 from typing import Optional
 from enum import Enum
 from rclpy.action import ActionClient
+import time
 
 HFOV = 1.01229096615671
 W = 640
@@ -87,27 +88,31 @@ class PersonDetector(Node):
 
         self.id_to_track = -1
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
-        self.move_head(0, 0)
-
 
     def image_callback(self, msg: CompressedImage):
+        print("Image")
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.image_stamp = msg.header.stamp
         self.image_is_updated = True
         self.got_image_callback()
+        print("Image2")
 
     def depth_callback(self, msg: Image):
+        print("Imaged")
         self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
-        self.got_image_callback()
+        #self.got_image_callback()
+        print("Imaged2")
 
     def got_image_callback(self):
         if not self.image_is_updated or not self.depth_is_updated:
             return
         self.image_is_updated = False
         self.depth_is_updated = False
+
+        self.move_head(0.05, 0)
 
         self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
@@ -342,12 +347,12 @@ class PersonDetector(Node):
     def move_head(self, horizontal, vertical):
         msg = BridgeAction()
 
-        msg.point.x = horizontal
-        msg.point.y = vertical
+        msg.point.x = -horizontal # Makes it go left on positive
+        msg.point.y = -vertical   # Makes it go up on positive
         msg.point.z = 1.
 
-        msg.min_duration = 0.1
-        msg.max_velocity = 25
+        msg.min_duration = 0.5
+        msg.max_velocity = 25.
 
         self.head_pub.publish(msg)
 
