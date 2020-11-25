@@ -45,7 +45,7 @@ class PersonFinder:
 		if self.on_gpu:
 			p_img = p_img.cuda()
 		results = self.model(p_img)
-		detections = non_max_suppression(results, 0.4)
+		detections = non_max_suppression(results, 0.5)
 		detections = detections[0]
 		if detections is not None:
 			detections = rescale_boxes(detections, 416, np_image.shape[:2])
