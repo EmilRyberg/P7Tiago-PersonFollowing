@@ -74,6 +74,7 @@ class KalmanTracking(Node):
         #### move camera
         if self.tracked_id != -1:
             tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
+            self.get_logger().info(f"tracked person: {tracked_person}")
             if tracked_person is not None:
                 self.move_head(tracked_person.horizontal_angle)
 
@@ -91,7 +92,8 @@ class KalmanTracking(Node):
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
         map_pose = Pose()
         if self.kf_number != 0: # Making sure atleast one kalman filter is running before indexing
-            self.get_logger().info(f"Sending goal: {self.kf[id].x[0, 0]} - {self.kf[id].x[1, 0]}")
+            self.get_logger().info(f"Sending goal: {self.kf[id].x[0, 0]} - {self.kf[id].x[1, 0]} - "
+                                   f"isTracked: {self.kf[id].isTracked}")
             map_pose.position.x = self.kf[id].x[0, 0]
             map_pose.position.y = self.kf[id].x[1, 0]
             map_pose.position.z = 0.0
@@ -125,7 +127,7 @@ class KalmanTracking(Node):
         msg = BridgeAction()
 
         msg.point.x = -horizontal # Makes it go left on positive
-        msg.point.y = 0 #-vertical   # Makes it go up on positive
+        msg.point.y = 0. #-vertical   # Makes it go up on positive
         msg.point.z = 1.
 
         msg.min_duration = 0.5

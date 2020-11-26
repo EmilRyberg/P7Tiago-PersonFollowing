@@ -8,7 +8,7 @@
 					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" />
 					<FindHuman ID="findHuman" current_id="{current_id}" first_run_flag="{first_run_flag}" found="{found}" person_info="{person_info}" goal="{goal}"/>
 				</Sequence>
-				<RateController hz="1.0">
+				<RateController hz="4.0">
 					<Sequence>
 						<IsHumanFound ID="isHumanFound" found="{found}"/>
 						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
@@ -41,7 +41,7 @@
 					<Fallback>
 						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}"/>
 						<Sequence>
-							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
+							<RecoveryNode number_of_retries="6" name="NavigateRecovery2">
 								<PipelineSequence name="NavigateWithReplanning">
 									<RateController hz="1.0">
 										<RecoveryNode number_of_retries="1" name="ComputePathToPose">

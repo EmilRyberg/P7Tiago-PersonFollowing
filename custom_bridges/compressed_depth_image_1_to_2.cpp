@@ -68,7 +68,7 @@ int main(int argc, char * argv[])
   // ROS 1 node and subscriber
   ros::init(argc, argv, "compressed_depth_image_1_to_2");
   ros::NodeHandle n;
-  ros::Subscriber sub = n.subscribe("/xtion/depth_registered/image_raw/compressed", 10, imageCallback);
+  ros::Subscriber sub = n.subscribe("/xtion/depth_registered/image_raw/compressedDepth", 10, imageCallback);
 
   ros::spin();
 

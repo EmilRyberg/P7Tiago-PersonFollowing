@@ -32,14 +32,14 @@ namespace tiago_person_following
   //code that runs when the action server returns a success result
   BT::NodeStatus FindSameHumanAction::on_success()
   {
-    if(result_.result->tracked_id != current_id)
+    if(!result_.result->is_tracked)
     {
-        RCLCPP_INFO(node_->get_logger(), "Could not find same person");
+        RCLCPP_INFO(node_->get_logger(), "FindSameHuman: Could not find same person");
         setOutput("found", false);
         return BT::NodeStatus::FAILURE;
     }
 
-    RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
+    RCLCPP_INFO(node_->get_logger(), "FindSameHuman: Found same person");
 
     //pose = result_.result->pose;
     setOutput("person_info", result_.result->pose);

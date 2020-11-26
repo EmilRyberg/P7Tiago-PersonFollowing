@@ -12,6 +12,7 @@ from person_detector.feature_extractor.feature_extractor import FeatureExtractor
 from person_detector.person_finder.person_finder import PersonFinder
 from person_follower_interfaces.msg import PersonInfoList, PersonInfo
 import numpy as np
+import cv2 as cv
 import math
 from typing import Optional
 from enum import Enum
@@ -82,8 +83,12 @@ class PersonDetector(Node):
                                                          "/compressed_images",
                                                          self.image_callback,
                                                          qos_profile)
+        #self.depth_subscriber = self.create_subscription(CompressedImage,
+        #                                                 "/compressed_depth_images",
+        #                                                 self.depth_callback,
+        #                                                 qos_profile)
         self.depth_subscriber = self.create_subscription(Image,
-                                                         "/compressed_depth_images",
+                                                         "/depth",
                                                          self.depth_callback,
                                                          qos_profile)
         self.get_logger().info("Node started")
@@ -94,9 +99,13 @@ class PersonDetector(Node):
         self.image_is_updated = True
         self.got_image_callback()
 
-    def depth_callback(self, msg: CompressedImage):
-        self.depth_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        #self.get_logger().info(f"got depth image")
+    def depth_callback(self, msg):
+        self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        #str_msg = msg.data
+        #buf = np.ndarray(shape=(1, len(str_msg)),
+        #                 dtype=np.float32, buffer=msg.data)
+        #self.depth_image = cv.imdecode(buf, cv.IMREAD_ANYDEPTH)
+        #self.get_logger().info(f"got depth image {self.depth_image}")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
         self.got_image_callback()
@@ -112,6 +121,8 @@ class PersonDetector(Node):
         persons = []
         id_to_track = -1
         for person_detection in person_detections:
+            if person_detection is None:
+                self.get_logger().warn("person det is None")
             cropped_person_img = self.person_finder.crop_bounding_box(self.image, person_detection)
             features = self.feature_extractor.get_features(cropped_person_img)
             found_same_person = False
@@ -195,8 +206,11 @@ class PersonDetector(Node):
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
                     persons.append(person)
 
+                    self.get_logger().info(f"Robot pose is None?: {robot_pose}")
+
                     if robot_pose is not None:
                         if self.is_person_to_track(robot_pose.position.x, robot_pose.position.y):
+                            self.get_logger().info(f"Found person to track")
                             id_to_track = person_id
 
                     person.horizontal_angle = horizontal_angle
@@ -231,7 +245,6 @@ class PersonDetector(Node):
         # Here, if we have a bounding box, we find the position of the object and publish it
         # Getting the middle pixel of the bounding box
         # TODO replace with better method
-        dist = self.read_depth(self.depth_image, bounding_box)
 
         # We calculate the two angles for the pixel
         centerx=int((bounding_box[0]+bounding_box[2])/2)
@@ -249,7 +262,9 @@ class PersonDetector(Node):
 
         #self.get_logger().info(f"ha : {horizontal_angle}, va: {vertical_angle}, dist: {dist}, c_h: {c_horizontal}\n"
         #                       f"c_v: {c_vertical} s_h: {s_horizontal} s_v: {s_vertical}")
-
+        dist = self.read_depth(self.depth_image, bounding_box)
+        if dist is None:
+            return None
         # We get the x, y, z in the camera frame
         v = np.array([c_horizontal * (dist * c_vertical),
                       s_horizontal * (dist * c_vertical),
@@ -333,6 +348,7 @@ class PersonDetector(Node):
 
     def is_person_to_track(self, x, y): # x, y in robot_frame
         angle = np.arctan2(y, x)
+        self.get_logger().info(f"Angle: {angle}, x: {x}")
         return x < 1.25 and np.abs(angle) < 0.3491
     def read_depth(self, dImg, bbox):
         centerx=int((bbox[0]+bbox[2])/2)
@@ -350,6 +366,8 @@ class PersonDetector(Node):
                     count+=1
                 y1 = y1 + 1
             x1 = x1 + 1
+        if count == 0:
+            return None
         average_depth = dist / count
         return average_depth
 
