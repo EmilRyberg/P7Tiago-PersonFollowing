@@ -83,7 +83,7 @@ class PersonDetector(Node):
                                                          self.image_callback,
                                                          qos_profile)
         self.depth_subscriber = self.create_subscription(Image,
-                                                         "/depth",
+                                                         "/compressed_depth_images",
                                                          self.depth_callback,
                                                          qos_profile)
         self.get_logger().info("Node started")
@@ -94,8 +94,8 @@ class PersonDetector(Node):
         self.image_is_updated = True
         self.got_image_callback()
 
-    def depth_callback(self, msg: Image):
-        self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+    def depth_callback(self, msg: CompressedImage):
+        self.depth_image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         #self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
