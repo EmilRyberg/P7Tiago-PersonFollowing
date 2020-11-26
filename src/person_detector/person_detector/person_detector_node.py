@@ -241,10 +241,10 @@ class PersonDetector(Node):
 
 
         # Here I made some coefficients for a linear function for calculating the angle for each pixel
-        ah = -HFOV / (W - 1)
-        bh = HFOV / 2
-        av = -VFOV / (H - 1)
-        bv = VFOV / 2
+        a_horizontal = -HFOV / (W - 1)
+        b_horizontal = HFOV / 2
+        a_vertical = -VFOV / (H - 1)
+        b_vertical = VFOV / 2
 
         # Here, if we have a bounding box, we find the position of the object and publish it
         # Getting the middle pixel of the bounding box
@@ -253,8 +253,8 @@ class PersonDetector(Node):
         # We calculate the two angles for the pixel
         centerx=int((bounding_box[0]+bounding_box[2])/2)
         centery=int((bounding_box[1]+bounding_box[3])/2)
-        horizontal_angle = ah * centerx + bh
-        vertical_angle = av * centery + bv
+        horizontal_angle = a_horizontal * centerx + b_horizontal
+        vertical_angle = a_vertical * centery + b_vertical
 
         if frame == ImageToFrameEnum.CAMERA_ANGLE:
             return horizontal_angle, vertical_angle
@@ -270,16 +270,16 @@ class PersonDetector(Node):
         if dist is None:
             return None
         # We get the x, y, z in the camera frame
-        v = np.array([c_horizontal * (dist * c_vertical),
+        camera_position_vector = np.array([c_horizontal * (dist * c_vertical),
                       s_horizontal * (dist * c_vertical),
                       s_vertical * (dist * c_horizontal)])
 
         if frame == ImageToFrameEnum.CAMERA_FRAME:
             point = Point()
 
-            point.x = v[0]
-            point.y = v[1]
-            point.z = v[2]
+            point.x = camera_position_vector[0]
+            point.y = camera_position_vector[1]
+            point.z = camera_position_vector[2]
 
             return point
 
@@ -316,7 +316,7 @@ class PersonDetector(Node):
                   transform.transform.translation.z])
 
         # We transform it to robot/map frame
-        map_point = np.dot(R, v) + T
+        map_point = np.dot(R, camera_position_vector) + T
         self.get_logger().info(f"Map point: {map_point}")
         pose = Pose()
         pose.position.x = map_point[0]
@@ -354,6 +354,7 @@ class PersonDetector(Node):
         angle = np.arctan2(y, x)
         self.get_logger().info(f"Angle: {angle}, x: {x}")
         return x < 1.25 and np.abs(angle) < 0.3491
+        
     def read_depth(self, dImg, bbox):
         centerx=int((bbox[0]+bbox[2])/2)
         centery=int((bbox[1]+bbox[3])/2)
