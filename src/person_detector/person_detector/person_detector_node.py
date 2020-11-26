@@ -288,7 +288,7 @@ class PersonDetector(Node):
                 
         self.found_transform = True
 
-        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[yp, xp]}")
+        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[centery, centerx]}")
 
         # Rotation and translation
         R = self.quaternion_to_rotation_matrix(transform)
