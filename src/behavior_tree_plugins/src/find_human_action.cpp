@@ -37,16 +37,15 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
 
-    pose = result_.result->pose;
     person_id = result_.result->tracked_id; 
 
     //now we could theoretically use the findHumanAction for both a new human and same human
     if(look_for_id == -1) //should only execute on first run (since look_for_id = -1 on first run only)
     {
-      look_for_id = person_id;
-      setOutput("current_id", person_id);
+      look_for_id = result_.result->tracked_id;
+      setOutput("current_id", result_.result->tracked_id);
       setOutput("person_info", result_.result->pose);
-      RCLCPP_INFO(node_->get_logger(), "Pose x: %f", pose.pose.position.x);
+      RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
       setOutput("first_run_flag", false);
@@ -61,7 +60,7 @@ namespace tiago_person_following
     else //should only run when the requested ID is the ID we recieve
     {
       RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
-      setOutput("person_info", pose);
+      setOutput("person_info", result_.result->pose);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
       return BT::NodeStatus::SUCCESS;
