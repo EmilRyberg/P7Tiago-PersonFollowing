@@ -24,12 +24,13 @@ namespace tiago_person_following
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
     RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
-    goal_.id = look_for_id;  //and this should send the ID to the action server 
+    goal_.id = look_for_id;  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
   }  
 
   //code that runs when waiting for result
   void FindHumanAction::on_wait_for_result()
   {
+    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Waiting for result");
   }
 
   //code that runs when the action server returns a success result
@@ -37,34 +38,16 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
 
-    person_id = result_.result->tracked_id; 
+    pose = result_.result->pose;
+    person_id = result_.result->tracked_id;
 
-    //now we could theoretically use the findHumanAction for both a new human and same human
-    if(look_for_id == -1) //should only execute on first run (since look_for_id = -1 on first run only)
-    {
-      look_for_id = result_.result->tracked_id;
-      setOutput("current_id", result_.result->tracked_id);
-      setOutput("person_info", result_.result->pose);
-      RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
-      setOutput("goal", result_.result->pose);
-      setOutput("found", true);
-      setOutput("first_run_flag", false);
-      return BT::NodeStatus::SUCCESS;
-    } 
-    else if(person_id != look_for_id)  //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
-    {
-      RCLCPP_INFO(node_->get_logger(), "Could not find same person");
-      setOutput("found", false);
-      return BT::NodeStatus::FAILURE;
-    }
-    else //should only run when the requested ID is the ID we recieve
-    {
-      RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
-      setOutput("person_info", result_.result->pose);
-      setOutput("goal", result_.result->pose);
-      setOutput("found", true);
-      return BT::NodeStatus::SUCCESS;
-    }
+    setOutput("current_id", person_id);
+    setOutput("person_info", result_.result->pose);
+    RCLCPP_INFO(node_->get_logger(), "Pose x: %f, pose y: %f", pose.pose.position.x, pose.pose.position.y);
+    setOutput("goal", result_.result->pose);
+    setOutput("found", true);
+    setOutput("first_run_flag", false);
+    return BT::NodeStatus::SUCCESS;
   }
 
   //code that runs when the action server returns an aborted result
