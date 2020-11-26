@@ -18,6 +18,8 @@ from typing import Optional
 from enum import Enum
 from rclpy.action import ActionClient
 import time
+import cv2
+import struct
 
 HFOV = 1.01229096615671
 W = 640
@@ -83,12 +85,8 @@ class PersonDetector(Node):
                                                          "/compressed_images",
                                                          self.image_callback,
                                                          qos_profile)
-        #self.depth_subscriber = self.create_subscription(CompressedImage,
-        #                                                 "/compressed_depth_images",
-        #                                                 self.depth_callback,
-        #                                                 qos_profile)
-        self.depth_subscriber = self.create_subscription(Image,
-                                                         "/depth",
+        self.depth_subscriber = self.create_subscription(CompressedImage,
+                                                         "/compressed_depth_images",
                                                          self.depth_callback,
                                                          qos_profile)
         self.get_logger().info("Node started")
@@ -99,13 +97,19 @@ class PersonDetector(Node):
         self.image_is_updated = True
         self.got_image_callback()
 
-    def depth_callback(self, msg):
-        self.depth_image = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        #str_msg = msg.data
-        #buf = np.ndarray(shape=(1, len(str_msg)),
-        #                 dtype=np.float32, buffer=msg.data)
-        #self.depth_image = cv.imdecode(buf, cv.IMREAD_ANYDEPTH)
-        #self.get_logger().info(f"got depth image {self.depth_image}")
+    def depth_callback(self, msg: CompressedImage):
+        depth_header_size = 12
+        raw_data = msg.data[depth_header_size:]
+        raw_data = np.array(raw_data, dtype=np.uint8)
+        depth_img_raw = cv2.imdecode(raw_data, cv2.IMREAD_UNCHANGED)
+        raw_header = msg.data[:depth_header_size]
+        # header: int, float, float
+        [compfmt, depthQuantA, depthQuantB] = struct.unpack('iff', raw_header)
+        depth_img_scaled = depthQuantA / (depth_img_raw.astype(np.float32) - depthQuantB)
+        # filter max values
+        depth_img_scaled[depth_img_raw == 0] = 0
+        self.depth_image = depth_img_scaled
+        #self.get_logger().info(f"got depth image")
         self.depth_stamp = msg.header.stamp
         self.depth_is_updated = True
         self.got_image_callback()
