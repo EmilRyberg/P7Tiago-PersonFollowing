@@ -74,7 +74,7 @@ class KalmanTracking(Node):
         #### move camera
         if self.tracked_id != -1:
             tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
-            self.get_logger().info(f"tracked person: {tracked_person}")
+            #self.get_logger().info(f"tracked person: {tracked_person}")
             if tracked_person is not None:
                 self.move_head(tracked_person.horizontal_angle)
 
@@ -130,7 +130,7 @@ class KalmanTracking(Node):
         msg.point.y = 0. #-vertical   # Makes it go up on positive
         msg.point.z = 1.
 
-        msg.min_duration = 0.5
+        msg.min_duration = 0.1
         msg.max_velocity = 25.
 
         self.head_pub.publish(msg)

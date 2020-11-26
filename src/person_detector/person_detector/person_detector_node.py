@@ -89,6 +89,8 @@ class PersonDetector(Node):
                                                          "/compressed_depth_images",
                                                          self.depth_callback,
                                                          qos_profile)
+        self.get_logger().info("Sleeping for a bit...")
+        #time.sleep(1)
         self.get_logger().info("Node started")
 
     def image_callback(self, msg: CompressedImage):
@@ -227,7 +229,7 @@ class PersonDetector(Node):
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
-        self.get_logger().info("Published")
+        #self.get_logger().info("Published")
 
     def transform_image_to_frame(self, bounding_box, frame):
         stamp = self.depth_stamp
@@ -290,17 +292,27 @@ class PersonDetector(Node):
             self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
 
         transform = None
+        time_frac = float(stamp.sec) * 1.0e9 + float(stamp.nanosec)
+        #(nanoseconds // CONVERSION_CONSTANT, nanoseconds % CONVERSION_CONSTANT)
+        time_frac -= 5e8
+        time_secs = time_frac // 1e9
+        time_nanoseconds = time_frac % 1e9
+        new_stamp = Time(seconds=time_secs, nanoseconds=time_nanoseconds)
+        new_stamp = new_stamp.to_msg()
+        self.get_logger().info(f"old stamp: {stamp}, new stamp: {new_stamp}")
         if frame == ImageToFrameEnum.ROBOT_FRAME:
             try:
-                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', stamp)
+                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', new_stamp)
             except tf2_ros.ExtrapolationException as e:
+                self.get_logger().error(f"Error in transform lookup: {e}")
                 self.last_error = e
                 self.found_transform = False
                 return None
         elif frame == ImageToFrameEnum.MAP_FRAME:
             try:
-                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', stamp)
+                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', new_stamp)
             except tf2_ros.ExtrapolationException as e:
+                self.get_logger().error(f"Error in transform lookup: {e}")
                 self.last_error = e
                 self.found_transform = False
                 return None
@@ -353,7 +365,8 @@ class PersonDetector(Node):
     def is_person_to_track(self, x, y): # x, y in robot_frame
         angle = np.arctan2(y, x)
         self.get_logger().info(f"Angle: {angle}, x: {x}")
-        return x < 1.25 and np.abs(angle) < 0.3491
+        return x < 1.8 and np.abs(angle) < 0.3491
+
     def read_depth(self, dImg, bbox):
         centerx=int((bbox[0]+bbox[2])/2)
         centery=int((bbox[1]+bbox[3])/2)
@@ -365,9 +378,9 @@ class PersonDetector(Node):
         dist = 0
         while x1 <= x2:
             while y1 <= y2:
-                if not np.isnan(dImg.item(y1, x1)):
+                if dImg.item(y1, x1) > 0.01:
                     dist = dist + dImg.item(y1, x1)
-                    count+=1
+                    count += 1
                 y1 = y1 + 1
             x1 = x1 + 1
         if count == 0:
