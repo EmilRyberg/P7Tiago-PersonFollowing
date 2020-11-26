@@ -233,14 +233,11 @@ class PersonDetector(Node):
         # TODO replace with better method
         dist = self.read_depth(self.depth_image, bounding_box)
 
-        # Getting the distance to the target
-        dist = self.depth_image.item(yp, xp)
-        if np.isnan(dist):
-            return None
-
         # We calculate the two angles for the pixel
-        horizontal_angle = ah * xp + bh
-        vertical_angle = av * yp + bv
+        centerx=int((bounding_box[0]+bounding_box[2])/2)
+        centery=int((bounding_box[1]+bounding_box[3])/2)
+        horizontal_angle = ah * centerx + bh
+        vertical_angle = av * centery + bv
 
         if frame == ImageToFrameEnum.CAMERA_ANGLE:
             return horizontal_angle, vertical_angle
