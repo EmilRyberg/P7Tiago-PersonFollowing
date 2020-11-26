@@ -82,7 +82,7 @@ class PersonDetector(Node):
                                                          "/compressed_images",
                                                          self.image_callback,
                                                          qos_profile)
-        self.depth_subscriber = self.create_subscription(Image,
+        self.depth_subscriber = self.create_subscription(CompressedImage,
                                                          "/compressed_depth_images",
                                                          self.depth_callback,
                                                          qos_profile)
