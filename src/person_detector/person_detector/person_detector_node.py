@@ -14,7 +14,7 @@ from person_follower_interfaces.msg import PersonInfoList, PersonInfo
 import numpy as np
 import cv2 as cv
 import math
-from typing import Optional
+from typing import Optional, Tuple
 from enum import Enum
 from rclpy.action import ActionClient
 import time
@@ -89,8 +89,7 @@ class PersonDetector(Node):
                                                          "/compressed_depth_images",
                                                          self.depth_callback,
                                                          qos_profile)
-        self.get_logger().info("Sleeping for a bit...")
-        #time.sleep(1)
+
         self.get_logger().info("Node started")
 
     def image_callback(self, msg: CompressedImage):
@@ -126,78 +125,15 @@ class PersonDetector(Node):
         person_detections = self.person_finder.find_persons(self.image)
         persons = []
         id_to_track = -1
+        person_id = None
         for person_detection in person_detections:
             if person_detection is None:
                 self.get_logger().warn("person det is None")
             cropped_person_img = self.person_finder.crop_bounding_box(self.image, person_detection)
             features = self.feature_extractor.get_features(cropped_person_img)
-            found_same_person = False
-            features_below_threshold = []
-            person_id = None
-            for i, (pid, emb) in enumerate(self.person_features_mapping):
-                distance = embedding_distance(features, emb)
-                #self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
-                # print(f"Distance: {distance}")
-                is_below_threshold = is_same_person(features, emb, threshold=0.9)
-                if is_below_threshold:
-                    found_same_person = True
-                    features_below_threshold.append((pid, distance, person_detection, i))
-            if found_same_person:
-                min_distance = 3  # distance is between 0 and 2
-                best_match = None
-                best_index = None
-                best_person_id = None
-                for pid, distance, person_detection, index in features_below_threshold:
-                    if distance < min_distance:
-                        min_distance = distance
-                        best_match = (person_detection, pid)
-                        best_person_id = pid
-                        best_index = index
-                current_person_id, current_features = self.person_features_mapping[best_index]
-                new_emb = current_features * 0.8 + features * 0.2
-                #diff_dist = embedding_distance(current_features, new_emb)
-                #self.get_logger().info(f"Moving embedding, diff distance: {diff_dist}")
-
-                self.person_features_mapping[best_index] = (best_match[1], new_emb)
-                person_id = best_person_id
-            else:
-                indices_to_remove = []
-                found_same_unconfirmed_person = False
-                time_now = self.get_clock().now()
-                unconfirmed_below_threshold = []
-                for i, (emb, times_found, time_last_seen) in enumerate(self.unconfirmed_persons):
-                    if time_now-time_last_seen > Duration(seconds=UNCONFIRMED_TIME_THRESHOLD_SECONDS):
-                        self.get_logger().info(f"Removing index: {i}")
-                        indices_to_remove.append(i)
-                        continue
-                    distance = embedding_distance(features, emb)
-                    is_below_threshold = is_same_person(features, emb, threshold=0.9)
-                    #self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
-                    if is_below_threshold:
-                        unconfirmed_below_threshold.append((i, distance, (emb, times_found, time_last_seen)))
-                min_distance = 3  # distance is between 0 and 2
-                best_match = None
-                for i, distance, info_tuple in unconfirmed_below_threshold:
-                    if distance < min_distance:
-                        min_distance = distance
-                        best_match = (i, info_tuple)
-                if best_match is not None:
-                    best_index, (emb, times_found, time_last_seen) = best_match
-                    avg_emb = (features + emb) / 2
-                    new_times_found = times_found + 1
-                    if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
-                        indices_to_remove.append(best_index)
-                        self.person_features_mapping.append((self.person_id, avg_emb))
-                        person_id = self.person_id
-                        self.person_id += 1
-                    found_same_unconfirmed_person = True
-                    self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
-                if len(indices_to_remove) > 0:
-                    self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
-                                                i not in indices_to_remove]
-                    #self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
-                if not found_same_unconfirmed_person:
-                    self.unconfirmed_persons.append((features, 0, time_now))
+            found_same_person, person_id = self.find_same_person(features)
+            if not found_same_person:
+                person_id = self.track_possible_new_persons(features)
             if person_id is not None:
                 map_pose = self.transform_image_to_frame(bounding_box=person_detection, frame=ImageToFrameEnum.MAP_FRAME)
                 robot_pose = self.transform_image_to_frame(bounding_box=person_detection, frame=ImageToFrameEnum.ROBOT_FRAME)
@@ -230,6 +166,85 @@ class PersonDetector(Node):
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
         #self.get_logger().info("Published")
+
+    def find_same_person(self, features):
+        found_same_person = False
+        features_below_threshold = []
+        person_id = None
+        distances = []
+        for i, (pid, emb) in enumerate(self.person_features_mapping):
+            distance = embedding_distance(features, emb)
+            # self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+            # print(f"Distance: {distance}")
+            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            if is_below_threshold:
+                found_same_person = True
+                distances.append(distance)
+                features_below_threshold.append((pid, i))
+        if found_same_person:
+            best_match = self.find_best_match(features_below_threshold, distances)
+            best_person_id, best_index = best_match
+            current_person_id, current_features = self.person_features_mapping[best_index]
+            new_emb = current_features * 0.8 + features * 0.2
+            self.person_features_mapping[best_index] = (best_person_id, new_emb)
+            person_id = best_person_id
+
+        return found_same_person, person_id
+
+    def track_possible_new_persons(self, features):
+        indices_to_remove = []
+        found_same_unconfirmed_person = False
+        time_now = self.get_clock().now()
+        distances = []
+        unconfirmed_below_threshold = []
+        person_id = None
+        for i, (emb, times_found, time_last_seen) in enumerate(self.unconfirmed_persons):
+            if time_now - time_last_seen > Duration(seconds=UNCONFIRMED_TIME_THRESHOLD_SECONDS):
+                self.get_logger().info(f"Removing index: {i}")
+                indices_to_remove.append(i)
+                continue
+            distance = embedding_distance(features, emb)
+            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            # self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
+            if is_below_threshold:
+                distances.append(distance)
+                unconfirmed_below_threshold.append((i, emb, times_found, time_last_seen))
+        best_match = self.find_best_match(unconfirmed_below_threshold, distances)
+        if best_match is not None:
+            best_index, emb, times_found, time_last_seen = best_match
+            avg_emb = (features + emb) / 2
+            new_times_found = times_found + 1
+            if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
+                indices_to_remove.append(best_index)
+                self.person_features_mapping.append((self.person_id, avg_emb))
+                person_id = self.person_id
+                self.person_id += 1
+            found_same_unconfirmed_person = True
+            self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
+        if len(indices_to_remove) > 0:
+            self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
+                                        i not in indices_to_remove]
+            # self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
+        if not found_same_unconfirmed_person:
+            self.unconfirmed_persons.append((features, 0, time_now))
+
+        return person_id
+
+
+    def find_best_match(self, list_of_tuples, distances) -> tuple:
+        if isinstance(list_of_tuples, np.ndarray):
+            list_of_tuples = list_of_tuples.tolist()
+        if isinstance(distances, np.ndarray):
+            distances = distances.tolist()
+        if len(list_of_tuples) != len(distances):
+            raise ValueError("list_of_tuples should be same length as distances")
+        min_distance = 3
+        best_index = None
+        for i, distance in enumerate(distances):
+            if distance < min_distance:
+                min_distance = distance
+                best_index = i
+        return list_of_tuples[best_index]
 
     def transform_image_to_frame(self, bounding_box, frame):
         stamp = self.depth_stamp
