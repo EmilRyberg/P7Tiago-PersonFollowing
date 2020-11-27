@@ -19,8 +19,8 @@ def cb(data):
     last_write_time = current_time
     np_arr = np.fromstring(data.data, np.uint8)
     frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    print(f"took image {img_id}")
-    cv2.imwrite(f"{current_time}-{img_id}.png", frame)
+    print("took image %d" % img_id)
+    cv2.imwrite("%f-%d.png" % (current_time, img_id), frame)
     img_id += 1
     
     
