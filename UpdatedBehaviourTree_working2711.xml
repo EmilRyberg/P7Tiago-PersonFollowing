@@ -4,7 +4,7 @@
 	<BehaviorTree ID="BehaviorTree">
 		<Repeat num_cycles="9999999">
 			<Fallback>
-					<Sequence>
+				<Sequence>
 					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" 
 						got_initial_goal_output="{got_initial_goal_output}" 
 						got_initial_goal_input="{got_initial_goal_output}" />
@@ -14,34 +14,37 @@
 				<RateController hz="1.0">
 					<Sequence>
 						<IsHumanFound ID="isHumanFound" found="{found}"/>
+						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
+							<PipelineSequence name="NavigateWithReplanning">
+								<RateController hz="1.0">
+									<RecoveryNode number_of_retries="1" name="ComputePathToPose">
+										<ComputePathToPose goal="{goal}" path="{path}" planner_id="GridBased"/>
+										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+									</RecoveryNode>
+								</RateController>
+								<RecoveryNode number_of_retries="1" name="FollowPath">
+									<FollowPath path="{path}" controller_id="FollowPath"/>
+									<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+								</RecoveryNode>
+							</PipelineSequence>
+							<ReactiveFallback name="RecoveryFallback">
+								<GoalUpdated/>
+								<SequenceStar name="RecoveryActions">
+									<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+									<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+									<Spin spin_dist="1.57"/>
+									<Wait wait_duration="5"/>
+								</SequenceStar>
+							</ReactiveFallback>
+						</RecoveryNode>
 						<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-						<GoalUpdated/>
-                        <SubTree ID="NavigationWithRecovery" goal="{goal}"/>
 					</Sequence>
 				</RateController>
 				<Sequence>
 					<Fallback>
 						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}"/>
 						<Sequence>
-							<SubTree ID="NavigationWithRecovery" goal="{goal}"/>
-							<SetBlackboard output_key="moved_flag" value="true" />
-						</Sequence>
-					</Fallback>
-					<RecoveryNode number_of_retries="10" name="RefindHuman">
-						<RateController hz="0.5">
-							<IsHumanFound ID="isHumanFound" found="{found}"/>
-							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-						</RateController>
-					</RecoveryNode>
-				</Sequence>
-				<AlwaysSuccess/>
-			</Fallback>
-		</Repeat>
-	</BehaviorTree>
-	<!-- ////////// --> 
-
-    <BehaviorTree ID="NavigationWithRecovery">
-       <RecoveryNode number_of_retries="6" name="NavigateRecovery">
+							<RecoveryNode number_of_retries="6" name="NavigateRecovery2">
 								<PipelineSequence name="NavigateWithReplanning">
 									<RateController hz="1.0">
 										<RecoveryNode number_of_retries="1" name="ComputePathToPose">
@@ -59,15 +62,18 @@
 									<SequenceStar name="RecoveryActions">
 										<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
 										<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
-										<Spin spin_dist="3.14"/>
-										<Fallback>
-											<IsHumanFound ID="isHumanFound" found="{found}"/>
-											<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-										</Fallback>
+										<Spin spin_dist="1.57"/>
 										<Wait wait_duration="5"/>
 									</SequenceStar>
 								</ReactiveFallback>
 							</RecoveryNode>
-    </BehaviorTree>
-    <!-- ////////// -->
+							<SetBlackboard output_key="moved_flag" value="true" />
+						</Sequence>
+					</Fallback>
+					<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
+				</Sequence>
+			</Fallback>
+		</Repeat>
+	</BehaviorTree>
+	<!-- ////////// -->
 </root>
