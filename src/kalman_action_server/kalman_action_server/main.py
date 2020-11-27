@@ -5,6 +5,8 @@ from kalman_action_server.ownKalman import KfTracker
 from rclpy.action import ActionServer
 from rclpy.node import Node
 import numpy as np
+import math
+from scipy.spatial.transform import Rotation
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from std_msgs.msg import Header
 
@@ -97,10 +99,13 @@ class KalmanTracking(Node):
             map_pose.position.x = self.kf[id].x[0, 0]
             map_pose.position.y = self.kf[id].x[1, 0]
             map_pose.position.z = 0.0
-            map_pose.orientation.x = 0.0
-            map_pose.orientation.y = 0.0
-            map_pose.orientation.z = -0.655247
-            map_pose.orientation.w = 0.75541
+
+            orientation=self.get_orientation(self.kf[id].x[0, 1], self.kf[id].x[1,1])
+
+            map_pose.orientation.x = orientation[0]
+            map_pose.orientation.y = orientation[1]
+            map_pose.orientation.z = orientation[2]
+            map_pose.orientation.w = orientation[3]
             result.pose = PoseStamped(header=header, pose=map_pose)
             result.is_tracked = self.kf[id].isTracked
 
@@ -122,6 +127,17 @@ class KalmanTracking(Node):
 
         result.tracked_id = id  # Replying which ID is to be tracked, essentially forwarding from earlier
         return result
+
+    def get_orientation(self, x_velocity, y_velocity):
+        #Using SohCahToa -- We know opposite and adjacent, hence we use atan
+        norm = math.sqrt(x_velocity**2 + y_velocity**2)
+        x_velocity = x_velocity / norm
+        y_velocity = y_velocity / norm
+        angle_around_z = math.atan2(y_velocity, x_velocity)
+        rotation = Rotation.from_rotvec(angle_around_z * np.array([0, 0, 1]))
+        return rotation.as_quat()
+
+
 
     def move_head(self, horizontal, vertical = 0):
         msg = BridgeAction()
