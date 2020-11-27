@@ -5,6 +5,7 @@
 #include "has_moved_condition.hpp"
 #include "isFirstRun_condition.hpp"
 #include "isHumanFound_condition.hpp"
+#include "findSameHuman_action.hpp"
 
 int main()
 {
