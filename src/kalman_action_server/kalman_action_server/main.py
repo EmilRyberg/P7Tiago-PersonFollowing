@@ -101,7 +101,7 @@ class KalmanTracking(Node):
             map_pose.position.y = self.kf[id].x[1, 0]
             map_pose.position.z = 0.0
 
-            orientation=self.get_orientation(self.kf[id].x[0, 1], self.kf[id].x[1,1])
+            orientation=self.get_orientation(self.kf[id].x[2, 0], self.kf[id].x[3, 0])
 
             map_pose.orientation.x = orientation[0]
             map_pose.orientation.y = orientation[1]
