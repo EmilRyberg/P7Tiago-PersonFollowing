@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
 #include <utility>
 
 // include ROS 1
@@ -23,32 +24,49 @@
 #endif
 #include "ros/ros.h"
 #include <actionlib/client/simple_action_client.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <control_msgs/PointHeadAction.h>
 #include <geometry_msgs/PointStamped.h>
+#include <ros/topic.h>
 #ifdef __clang__
 # pragma clang diagnostic pop
 #endif
+
+#include <opencv2/core.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 // include ROS 2
 #include "rclcpp/rclcpp.hpp"
 #include <person_follower_interfaces/msg/bridge_action.hpp>
 
+static const std::string imageTopic      = "/xtion/rgb/image_raw";
+static const std::string cameraInfoTopic = "/xtion/rgb/camera_info";
 
 // Our Action interface type for moving TIAGo's head, provided as a typedef for convenience
 typedef actionlib::SimpleActionClient<control_msgs::PointHeadAction> PointHeadClient;
 typedef boost::shared_ptr<PointHeadClient> PointHeadClientPtr;
 PointHeadClientPtr pointHeadClient;
+cv::Mat cameraIntrinsics;
 
 void action_callback(const person_follower_interfaces::msg::BridgeAction::SharedPtr msg)
 {
+	geometry_msgs::PointStamped pointStamped;
+
+	pointStamped.header.frame_id = "/xtion_rgb_optical_frame";
+	pointStamped.header.stamp    = ros::Time::now();
+
+	//compute normalized coordinates of the selected pixel
+	double x = ( msg->x  - cameraIntrinsics.at<double>(0,2) )/ cameraIntrinsics.at<double>(0,0);
+	double y = ( msg->y  - cameraIntrinsics.at<double>(1,2) )/ cameraIntrinsics.at<double>(1,1);
+	double Z = 1.0; //define an arbitrary distance
+	pointStamped.point.x = x * Z;
+	pointStamped.point.y = y * Z;
+	pointStamped.point.z = Z;  
 	control_msgs::PointHeadGoal goal;
 
-	goal.target.header.frame_id = "/xtion_rgb_optical_frame";
-	goal.target.header.stamp = ros::Time::now();
-
-	goal.target.point.x = msg->point.x;
-	goal.target.point.z = msg->point.z;
-	goal.target.point.y = msg->point.y;
+	goal.target.point.x = x * Z;
+	goal.target.point.y = x * Z;
+	goal.target.point.z = Z;
 
 	goal.pointing_frame = "/xtion_rgb_optical_frame";
 	goal.pointing_axis.x = 0;
@@ -64,7 +82,7 @@ void action_callback(const person_follower_interfaces::msg::BridgeAction::Shared
 
 void createPointHeadClient(PointHeadClientPtr& actionClient)
 {
-  actionClient.reset( new PointHeadClient("/head_controller/point_head_action") );
+  actionClient.reset(new PointHeadClient("/head_controller/point_head_action") );
 }
 
 int main(int argc, char * argv[])
@@ -72,11 +90,22 @@ int main(int argc, char * argv[])
 	// ROS 1 node and client
 	ros::init(argc, argv, "head_action_2_to_1");
 	ros::NodeHandle n;
+
+	  // Get the camera intrinsic parameters from the appropriate ROS topic
+	ROS_INFO("Waiting for camera intrinsics ... ");
+	sensor_msgs::CameraInfoConstPtr msg = ros::topic::waitForMessage
+		<sensor_msgs::CameraInfo>(cameraInfoTopic, ros::Duration(10.0));
+	if(msg.use_count() > 0)
+	{
+		cameraIntrinsics = cv::Mat::zeros(3,3,CV_64F);
+		cameraIntrinsics.at<double>(0, 0) = msg->K[0]; //fx
+		cameraIntrinsics.at<double>(1, 1) = msg->K[4]; //fy
+		cameraIntrinsics.at<double>(0, 2) = msg->K[2]; //cx
+		cameraIntrinsics.at<double>(1, 2) = msg->K[5]; //cy
+		cameraIntrinsics.at<double>(2, 2) = 1;
+	}
+
 	createPointHeadClient(pointHeadClient);
-
-	//ros::spin();
-
-	//rclcpp::shutdown();
 
 	// ROS 2 node and subscriber
     rclcpp::init(argc, argv);

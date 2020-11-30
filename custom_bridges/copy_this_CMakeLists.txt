@@ -21,6 +21,23 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(person_follower_interfaces REQUIRED)
 
+find_package(OpenCV 4 QUIET
+  COMPONENTS
+    opencv_core
+    opencv_imgproc
+    opencv_imgcodecs
+  CONFIG
+)
+if(NOT OpenCV_FOUND)
+  find_package(OpenCV 3 REQUIRED
+    COMPONENTS
+      opencv_core
+      opencv_imgproc
+      opencv_imgcodecs
+    CONFIG
+  )
+endif()
+
 # find ROS 1 packages
 set(cmake_extras_files cmake/find_ros1_package.cmake cmake/find_ros1_interface_packages.cmake)
 include(cmake/find_ros1_package.cmake)
@@ -163,6 +180,7 @@ function(custom_executable target)
       "ros1_sensor_msgs"
       "ros1_actionlib"
       "geometry_msgs"
+      "OpenCV"
       )
   endif()
   if(ARG_DEPENDENCIES)
