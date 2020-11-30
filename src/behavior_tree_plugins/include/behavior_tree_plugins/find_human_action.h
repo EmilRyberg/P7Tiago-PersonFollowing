@@ -36,7 +36,7 @@ namespace tiago_person_following
         {
             return providedBasicPorts(
             {   
-                BT::InputPort<int32_t>("target_id")
+                BT::InputPort<int32_t>("target_id"),
                 BT::OutputPort<int32_t>("current_id"),
                 BT::OutputPort<bool>("found"),
                 BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
