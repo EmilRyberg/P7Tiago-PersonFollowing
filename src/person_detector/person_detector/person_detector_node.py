@@ -148,6 +148,8 @@ class PersonDetector(Node):
                     person.person_id = person_id
                     person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
+                    person.image_x = int((person_detection[0] + person_detection[2]) / 2)
+                    person.image_y = int((person_detection[1] + person_detection[3]) / 2)
                     persons.append(person)
 
                     self.get_logger().info(f"Robot pose is None?: {robot_pose}")
