@@ -64,10 +64,7 @@ void action_callback(const person_follower_interfaces::msg::BridgeAction::Shared
 	pointStamped.point.z = Z;  
 	control_msgs::PointHeadGoal goal;
 
-	goal.target.point.x = x * Z;
-	goal.target.point.y = x * Z;
-	goal.target.point.z = Z;
-
+	goal.target = pointStamped;
 	goal.pointing_frame = "/xtion_rgb_optical_frame";
 	goal.pointing_axis.x = 0;
 	goal.pointing_axis.y = 0;
@@ -76,6 +73,8 @@ void action_callback(const person_follower_interfaces::msg::BridgeAction::Shared
 	goal.max_velocity = msg->max_velocity;
 
 	goal.min_duration = ros::Duration(msg->min_duration);
+
+	//ROS_INFO("Sending goal");
 	
 	pointHeadClient->sendGoal(goal);
 }
@@ -104,6 +103,7 @@ int main(int argc, char * argv[])
 		cameraIntrinsics.at<double>(1, 2) = msg->K[5]; //cy
 		cameraIntrinsics.at<double>(2, 2) = 1;
 	}
+	ROS_INFO("Done. Ready.");
 
 	createPointHeadClient(pointHeadClient);
 
