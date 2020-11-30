@@ -74,11 +74,8 @@ class PersonDetector(Node):
         self.unconfirmed_persons = []
         self.person_id = 0
 
-        #self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=20))
         self.tf_buffer = tf_buffer
-        #self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=True, node=self)
-        #self.tf_listener_thread = threading.Thread(target=self.tf_listener_function, daemon=True)
-        #self.tf_listener_thread.start()
+
         self.first_run = True
         self.found_transform = False
         self.last_error = None
@@ -255,13 +252,6 @@ class PersonDetector(Node):
     def transform_image_to_frame(self, bounding_box, frame):
         stamp = self.depth_stamp
         self.old_depth_stamp = stamp
-        #if self.found_transform or self.first_run:
-        #    stamp = self.depth_stamp
-        #    self.old_depth_stamp = self.depth_stamp
-        #    self.first_run = False
-        #else:
-        #    stamp = self.old_depth_stamp
-
 
         # Here I made some coefficients for a linear function for calculating the angle for each pixel
         a_horizontal = -HFOV / (W - 1)
@@ -304,12 +294,6 @@ class PersonDetector(Node):
 
             return point
 
-        time_difference = self.depth_stamp.sec + self.depth_stamp.nanosec*1e-9 - (self.old_depth_stamp.sec+self.old_depth_stamp.nanosec*1e-9)
-        if time_difference > 5:
-            self.get_logger().error(f"Images and tf frames are delayed by more than 5s. Last error: {self.last_error}")
-        elif time_difference > 0.5:
-            self.get_logger().warn("Images and tf frames are delayed by more than 0.5s")
-
         transform = None
         time_frac = float(stamp.sec) * 1.0e9 + float(stamp.nanosec)
         #(nanoseconds // CONVERSION_CONSTANT, nanoseconds % CONVERSION_CONSTANT)
@@ -327,7 +311,7 @@ class PersonDetector(Node):
             first_link = "map"
 
         counter = 10
-        success = False
+        self.found_transform = False
         while counter > 0:
             try:
                 transform = self.tf_buffer.lookup_transform(first_link, 'xtion_depth_frame', new_stamp)
@@ -337,15 +321,11 @@ class PersonDetector(Node):
                 time.sleep(0.2)
             else:
                 self.found_transform = True
-                success = True
                 break
             counter -= 1
-        if not success:
+        if not self.found_transform:
             self.get_logger().error(f"Timeout waiting for transform: {self.last_error}")
-            self.found_transform = False
             return None
-                
-        self.found_transform = True
 
         self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[centery, centerx]}")
 
@@ -366,8 +346,6 @@ class PersonDetector(Node):
         pose.orientation.y = transform.transform.rotation.y
         pose.orientation.z = transform.transform.rotation.z
         pose.orientation.w = transform.transform.rotation.w
-
-        #self.old_depth_stamp = self.depth_stamp
 
         return pose
 
