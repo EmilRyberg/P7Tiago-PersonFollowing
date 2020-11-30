@@ -235,14 +235,15 @@ class PersonDetector(Node):
 
         return person_id
 
-
-    def find_best_match(self, list_of_tuples, distances) -> tuple:
+    def find_best_match(self, list_of_tuples, distances) -> Optional[tuple]:
         if isinstance(list_of_tuples, np.ndarray):
             list_of_tuples = list_of_tuples.tolist()
         if isinstance(distances, np.ndarray):
             distances = distances.tolist()
         if len(list_of_tuples) != len(distances):
             raise ValueError("list_of_tuples should be same length as distances")
+        if len(list_of_tuples) == 0 or len(distances) == 0:
+            return None
         min_distance = 3
         best_index = None
         for i, distance in enumerate(distances):
