@@ -12,7 +12,6 @@ from person_detector.feature_extractor.feature_extractor import FeatureExtractor
 from person_detector.person_finder.person_finder import PersonFinder
 from person_follower_interfaces.msg import PersonInfoList, PersonInfo
 import numpy as np
-import cv2 as cv
 import math
 from typing import Optional, Tuple
 from enum import Enum
@@ -20,6 +19,7 @@ from rclpy.action import ActionClient
 import time
 import cv2
 import struct
+from rclpy.executors import SingleThreadedExecutor, MultiThreadedExecutor
 
 HFOV = 1.01229096615671
 W = 640
@@ -43,7 +43,7 @@ class CustomDuration: # Hack to make duration for tf2_ros work since it expects 
 
 
 class PersonDetector(Node):
-    def __init__(self):
+    def __init__(self, tf_buffer):
         super().__init__("person_detector")
         self.declare_parameter("feature_weights_path")
         self.declare_parameter("yolo_weights_path")
@@ -60,7 +60,7 @@ class PersonDetector(Node):
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
         self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
-        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=on_gpu)
+        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=True)
         self.cv_bridge = CvBridge()
         self.image = None
         self.depth_image = None
@@ -74,8 +74,11 @@ class PersonDetector(Node):
         self.unconfirmed_persons = []
         self.person_id = 0
 
-        self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=20))
-        self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=True, node=self)
+        #self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=20))
+        self.tf_buffer = tf_buffer
+        #self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=True, node=self)
+        #self.tf_listener_thread = threading.Thread(target=self.tf_listener_function, daemon=True)
+        #self.tf_listener_thread.start()
         self.first_run = True
         self.found_transform = False
         self.last_error = None
@@ -92,8 +95,10 @@ class PersonDetector(Node):
 
         self.get_logger().info("Node started")
 
+
     def image_callback(self, msg: CompressedImage):
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        #self.get_logger().info("got rgb image")
         self.image_stamp = msg.header.stamp
         self.image_is_updated = True
         self.got_image_callback()
@@ -264,8 +269,6 @@ class PersonDetector(Node):
         b_vertical = VFOV / 2
 
         # Here, if we have a bounding box, we find the position of the object and publish it
-        # Getting the middle pixel of the bounding box
-        # TODO replace with better method
 
         # We calculate the two angles for the pixel
         centerx=int((bounding_box[0]+bounding_box[2])/2)
@@ -309,28 +312,37 @@ class PersonDetector(Node):
         transform = None
         time_frac = float(stamp.sec) * 1.0e9 + float(stamp.nanosec)
         #(nanoseconds // CONVERSION_CONSTANT, nanoseconds % CONVERSION_CONSTANT)
-        time_frac -= 5e8
+        time_frac -= 1e8
         time_secs = time_frac // 1e9
         time_nanoseconds = time_frac % 1e9
         new_stamp = Time(seconds=time_secs, nanoseconds=time_nanoseconds)
         new_stamp = new_stamp.to_msg()
         self.get_logger().info(f"old stamp: {stamp}, new stamp: {new_stamp}")
         if frame == ImageToFrameEnum.ROBOT_FRAME:
-            try:
-                transform = self.tf_buffer.lookup_transform('base_link', 'xtion_depth_frame', new_stamp)
-            except tf2_ros.ExtrapolationException as e:
-                self.get_logger().error(f"Error in transform lookup: {e}")
-                self.last_error = e
-                self.found_transform = False
-                return None
+            first_link = "base_link"
         elif frame == ImageToFrameEnum.MAP_FRAME:
+            first_link = "map"
+        else:  # make pycharm happy
+            first_link = "map"
+
+        counter = 10
+        success = False
+        while counter > 0:
             try:
-                transform = self.tf_buffer.lookup_transform('map', 'xtion_depth_frame', new_stamp)
+                transform = self.tf_buffer.lookup_transform(first_link, 'xtion_depth_frame', new_stamp)
             except tf2_ros.ExtrapolationException as e:
-                self.get_logger().error(f"Error in transform lookup: {e}")
+                self.get_logger().warning(f"Error in transform lookup: {e}")
                 self.last_error = e
-                self.found_transform = False
-                return None
+                time.sleep(0.2)
+            else:
+                self.found_transform = True
+                success = True
+                break
+            counter -= 1
+        if not success:
+            self.get_logger().error(f"Timeout waiting for transform: {self.last_error}")
+            self.found_transform = False
+            return None
                 
         self.found_transform = True
 
@@ -380,7 +392,7 @@ class PersonDetector(Node):
     def is_person_to_track(self, x, y): # x, y in robot_frame
         angle = np.arctan2(y, x)
         self.get_logger().info(f"Angle: {angle}, x: {x}")
-        return x < 1.8 and np.abs(angle) < 0.3491
+        return x < 3 and np.abs(angle) < 0.3491
 
     def read_depth(self, dImg, bbox):
         centerx=int((bbox[0]+bbox[2])/2)
@@ -403,18 +415,26 @@ class PersonDetector(Node):
         average_depth = dist / count
         return average_depth
 
+class TfListener(Node):
+    def __init__(self):
+        super().__init__("tf_listener")
+        self.tf_buffer = tf2_ros.Buffer(cache_time=CustomDuration(sec=20))
+        self.listener = tf2_ros.TransformListener(self.tf_buffer, spin_thread=False, node=self)
+        self.get_logger().info("Started tf listener thread")
+
 
 def main(args=None):
     rclpy.init(args=args)
-    person_detector = PersonDetector()
 
-    rclpy.spin(person_detector)
+    tf_listener_node = TfListener()
+    person_detector = PersonDetector(tf_buffer=tf_listener_node.tf_buffer)
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    person_detector.destroy_node()
-    rclpy.shutdown()
+    executor = MultiThreadedExecutor()
+    executor.add_node(tf_listener_node)
+    executor.add_node(person_detector)
+    executor.spin()
+
+    executor.shutdown()
 
 
 if __name__ == '__main__':

@@ -46,7 +46,7 @@ namespace tiago_person_following
     RCLCPP_INFO(node_->get_logger(), "Pose x: %f, pose y: %f", pose.pose.position.x, pose.pose.position.y);
     setOutput("goal", result_.result->pose);
     setOutput("found", true);
-    setOutput("first_run_flag", false);
+    setOutput("got_initial_goal_output", true);
     return BT::NodeStatus::SUCCESS;
   }
 

@@ -7,6 +7,7 @@ from rclpy.node import Node
 import numpy as np
 import math
 from scipy.spatial.transform import Rotation
+import time
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from std_msgs.msg import Header
 
@@ -18,13 +19,13 @@ class KalmanTracking(Node):
 
     def __init__(self):
         super().__init__('kalman_action_server')
-        self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
         self.kf = []
         self.kf_number = 0
         self.should_track_id = -1
         self.tracked_id = -1
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
+        self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
 
     def detection_cb(self, msg: PersonInfoList):
         time = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9 # Conversion to seconds
@@ -74,11 +75,11 @@ class KalmanTracking(Node):
                 newPersonIdx += 1
 
         #### move camera
-        if self.tracked_id != -1:
-            tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
-            #self.get_logger().info(f"tracked person: {tracked_person}")
-            if tracked_person is not None:
-                self.move_head(tracked_person.horizontal_angle)
+        #if self.tracked_id != -1:
+        #    tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
+        #    #self.get_logger().info(f"tracked person: {tracked_person}")
+        #    if tracked_person is not None:
+        #        self.move_head(tracked_person.horizontal_angle)
 
 
     def action_cb(self, cb_handle):
@@ -100,7 +101,7 @@ class KalmanTracking(Node):
             map_pose.position.y = self.kf[id].x[1, 0]
             map_pose.position.z = 0.0
 
-            orientation=self.get_orientation(self.kf[id].x[0, 1], self.kf[id].x[1,1])
+            orientation=self.get_orientation(self.kf[id].x[2, 0], self.kf[id].x[3, 0])
 
             map_pose.orientation.x = orientation[0]
             map_pose.orientation.y = orientation[1]
