@@ -27,10 +27,10 @@ VFOV = 0.785398163397448
 H = 480
 UNCONFIRMED_COUNT_THRESHOLD = 3
 UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
-F_X = 500
-F_Y = 300
-C_X = 300
-C_Y = 300
+F_X = 530.674
+F_Y = 531.818
+C_X = 315.459
+C_Y = 244.541
 
 
 class ImageToFrameEnum(Enum):
@@ -299,6 +299,7 @@ class PersonDetector(Node):
         camera_position_vector = np.array([camera_x,
                           camera_y,
                           camera_z])
+        self.get_logger().info(f"Position in camera coords: {camera_position_vector}")
 
         if frame == ImageToFrameEnum.CAMERA_FRAME:
             point = Point()
@@ -408,6 +409,7 @@ class PersonDetector(Node):
             return None
         average_depth = dist / count
         return average_depth
+
 
 class TfListener(Node):
     def __init__(self):
