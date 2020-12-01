@@ -18,20 +18,18 @@ namespace tiago_person_following
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
     RCLCPP_INFO(node_->get_logger(), "abc");
-    
-    look_for_id = -1; //i.e. dont look for a specific ID, but look and track a human and return with the ID
+        getInput("target_id", look_for_id); //i.e. dont look for a specific ID, but look and track a human and return with the ID
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
     RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
-    goal_.id = look_for_id;  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
+    goal_.id = look_for_id;  //and this should send the ID to the action server 
   }  
 
   //code that runs when waiting for result
   void FindHumanAction::on_wait_for_result()
   {
-    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Waiting for result");
   }
 
   //code that runs when the action server returns a success result
@@ -39,16 +37,34 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
 
-    pose = result_.result->pose;
-    person_id = result_.result->tracked_id;
+    person_id = result_.result->tracked_id; 
 
-    setOutput("current_id", person_id);
-    setOutput("person_info", result_.result->pose);
-    RCLCPP_INFO(node_->get_logger(), "Pose x: %f, pose y: %f", pose.pose.position.x, pose.pose.position.y);
-    setOutput("goal", result_.result->pose);
-    setOutput("found", true);
-    setOutput("got_initial_goal_output", true);
-    return BT::NodeStatus::SUCCESS;
+    //now we could theoretically use the findHumanAction for both a new human and same human
+    if(look_for_id == -1) //should only execute on first run (since look_for_id = -1 on first run only)
+    {
+      look_for_id = result_.result->tracked_id;
+      setOutput("current_id", result_.result->tracked_id);
+      setOutput("person_info", result_.result->pose);
+      RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
+      setOutput("goal", result_.result->pose);
+      setOutput("found", true);
+      setOutput("got_initial_goal_output", true);
+      return BT::NodeStatus::SUCCESS;
+    } 
+    else if(person_id != look_for_id)  //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
+    {
+      RCLCPP_INFO(node_->get_logger(), "Could not find same person");
+      setOutput("found", false);
+      return BT::NodeStatus::FAILURE;
+    }
+    else //should only run when the requested ID is the ID we recieve
+    {
+      RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
+      setOutput("person_info", result_.result->pose);
+      setOutput("goal", result_.result->pose);
+      setOutput("found", true);
+      return BT::NodeStatus::SUCCESS;
+    }
   }
 
   //code that runs when the action server returns an aborted result

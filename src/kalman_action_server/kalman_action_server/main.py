@@ -78,7 +78,7 @@ class KalmanTracking(Node):
 
         #### move camera
         current_time = time.time()
-        if current_time - self.last_sent_head_movement > 0.75:
+        if current_time - self.last_sent_head_movement > 2:
             self.last_sent_head_movement = current_time
             if self.tracked_id != -1:
                 tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
@@ -141,14 +141,14 @@ class KalmanTracking(Node):
         rotation = Rotation.from_rotvec(angle_around_z * np.array([0, 0, 1]))
         return rotation.as_quat()
 
-    def move_head(self, x, y):
+    def move_head(self, x, y, min_duration=0.5):
         msg = BridgeAction()
 
         # self.get_logger().info(f"move head horizontal: {horizontal}")
         msg.x = x
         msg.y = y
 
-        msg.min_duration = 0.35
+        msg.min_duration = min_duration
         msg.max_velocity = 25.
 
         self.head_pub.publish(msg)

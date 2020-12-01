@@ -114,12 +114,13 @@ controller_server:
     # Goal checker parameters
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 1.8
-      yaw_goal_tolerance: 1.5
+      xy_goal_tolerance: 0.5
+      yaw_goal_tolerance: 0.1
       stateful: True
     # DWB parameters
     FollowPath:
-      plugin: "teb_local_planner::TebLocalPlannerROS"
+      plugin: "dwb_core::DWBLocalPlanner"
+      #"teb_local_planner::TebLocalPlannerROS"
       #"dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
       min_vel_x: 0.0

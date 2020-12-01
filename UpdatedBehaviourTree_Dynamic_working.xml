@@ -10,14 +10,12 @@
 				</Sequence>
 				<RateController hz="1.0">
 					<Sequence>
-						<IsHumanFound ID="isHumanFound" found="{found}"/>
 						<RecoveryNode number_of_retries="10" name="RefindHuman">
-							<RateController hz="0.5">
+							<Sequence>
+								<IsHumanFound ID="isHumanFound" found="{found}"/>
 								<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-							</RateController>
-							<RateController hz="0.5">
-								<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-							</RateController>
+							</Sequence>
+							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
 						</RecoveryNode>
 						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
 							<PipelineSequence name="NavigateWithReplanning">
@@ -27,7 +25,7 @@
 											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
 												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased"/>
 											</GoalUpdater>
-											<TruncatePath distance="1.0" input_path="{path}" output_path="{truncated_path}"/>
+											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}"/>
 										</Sequence>										
 										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
 									</RecoveryNode>
@@ -61,7 +59,7 @@
 											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
 												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased"/>
 											</GoalUpdater>
-											<TruncatePath distance="1.0" input_path="{path}" output_path="{truncated_path}"/>
+											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}"/>
 										</Sequence>										
 										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
 									</RecoveryNode>
@@ -84,14 +82,12 @@
 							<SetBlackboard output_key="moved_flag" value="true" />
 						</Sequence>
 					</Fallback>
-					<RecoveryNode number_of_retries="20" name="RefindHuman">
-						<RateController hz="0.5">
+					<RateController hz="0.5">
+						<RecoveryNode number_of_retries="20" name="RefindHuman">
 							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-						</RateController>
-						<RateController hz="0.5">
 							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
-						</RateController>
-					</RecoveryNode>
+						</RecoveryNode>
+					</RateController>
 				</Sequence>
 				<AlwaysSuccess/>
 			</Fallback>

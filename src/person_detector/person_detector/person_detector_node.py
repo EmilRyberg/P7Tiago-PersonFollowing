@@ -153,8 +153,8 @@ class PersonDetector(Node):
                     person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
                     bounding_box_height = int(person_detection[1] + person_detection[3])
-                    person.image_x = int((person_detection[0] + person_detection[2]) / 2)
-                    person.image_y = int(person_detection[1]) + bounding_box_height // 4
+                    person.image_x = int((person_detection[0] + person_detection[2]) // 2)
+                    person.image_y = 240 #int(person_detection[1]) + bounding_box_height // 4
                     persons.append(person)
 
                     self.get_logger().info(f"Robot pose is None?: {robot_pose}")
@@ -343,7 +343,7 @@ class PersonDetector(Node):
             self.get_logger().error(f"Timeout waiting for transform: {self.last_error}")
             return None
 
-        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[centery, centerx]}")
+        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[center_y, center_x]}")
 
         # Rotation and translation
         R = self.quaternion_to_rotation_matrix(transform)
