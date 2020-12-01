@@ -18,26 +18,26 @@ def sort_obj_based_on_id(obj):
 
 
 class KalmanTracking(Node):
-
     def __init__(self):
         super().__init__('kalman_action_server')
         self.kf = []
         self.kf_number = 0
         self.should_track_id = -1
         self.tracked_id = -1
+        self.last_sent_head_movement = time.time()
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
 
     def detection_cb(self, msg: PersonInfoList):
-        time = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
+        ttime = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
         persons = msg.persons
         persons.sort(key=sort_obj_based_on_id)  # Sorting based on ID
         self.should_track_id = msg.tracked_id
 
         if len(persons) == 0:  # If no new IDs have come, these are simply updated
             for i in range(self.kf_number):
-                self.kf[i].predict(time)
+                self.kf[i].predict(ttime)
                 self.kf[i].isTracked = False
 
             return
@@ -49,12 +49,12 @@ class KalmanTracking(Node):
                 newPersonIdx = len(persons) - 1
 
             if i != persons[newPersonIdx].person_id and i < self.kf_number:
-                self.kf[i].predict(time)
+                self.kf[i].predict(ttime)
                 self.kf[i].isTracked = False
 
             # Runs when there is an update to a specific ID
             elif (i == persons[newPersonIdx].person_id and i < self.kf_number):
-                self.kf[i].predict(time)
+                self.kf[i].predict(ttime)
 
                 # Getting the measured position into the right format
                 mPos = np.array([[persons[newPersonIdx].pose.pose.position.x],
@@ -71,17 +71,20 @@ class KalmanTracking(Node):
                 mPos = np.array([persons[newPersonIdx].pose.pose.position.x,
                                  persons[newPersonIdx].pose.pose.position.y])
 
-                self.kf.append(KfTracker(mPos, time))
+                self.kf.append(KfTracker(mPos, ttime))
                 self.kf_number += 1
 
                 newPersonIdx += 1
 
         #### move camera
-        if self.tracked_id != -1:
-            tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
-            # self.get_logger().info(f"tracked person: {tracked_person}")
-            if tracked_person is not None:
-                self.move_head(tracked_person.image_x, tracked_person.image_y)
+        current_time = time.time()
+        if current_time - self.last_sent_head_movement > 0.75:
+            self.last_sent_head_movement = current_time
+            if self.tracked_id != -1:
+                tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
+                self.get_logger().info(f"tracked person: {tracked_person}")
+                if tracked_person is not None:
+                    self.move_head(tracked_person.image_x, tracked_person.image_y)
 
     def action_cb(self, cb_handle):
         id = cb_handle.request.id
@@ -145,7 +148,7 @@ class KalmanTracking(Node):
         msg.x = x
         msg.y = y
 
-        msg.min_duration = 0.
+        msg.min_duration = 0.35
         msg.max_velocity = 25.
 
         self.head_pub.publish(msg)

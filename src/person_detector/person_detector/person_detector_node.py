@@ -148,8 +148,9 @@ class PersonDetector(Node):
                     person.person_id = person_id
                     person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
+                    bounding_box_height = int(person_detection[1] + person_detection[3])
                     person.image_x = int((person_detection[0] + person_detection[2]) / 2)
-                    person.image_y = int((person_detection[1] + person_detection[3]) / 2)
+                    person.image_y = int(person_detection[1]) + bounding_box_height // 4
                     persons.append(person)
 
                     self.get_logger().info(f"Robot pose is None?: {robot_pose}")
@@ -165,7 +166,7 @@ class PersonDetector(Node):
 
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = "map"  # TODO change this to the correct frame id of depth sensor
+        header.frame_id = "/map"  # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
