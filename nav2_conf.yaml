@@ -119,7 +119,8 @@ controller_server:
       stateful: True
     # DWB parameters
     FollowPath:
-      plugin: "dwb_core::DWBLocalPlanner"
+      plugin: "teb_local_planner::TebLocalPlannerROS"
+      #"dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
       min_vel_x: 0.0
       min_vel_y: 0.0
