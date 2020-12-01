@@ -27,6 +27,10 @@ VFOV = 0.785398163397448
 H = 480
 UNCONFIRMED_COUNT_THRESHOLD = 3
 UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
+F_X = 500
+F_Y = 300
+C_X = 300
+C_Y = 300
 
 
 class ImageToFrameEnum(Enum):
@@ -265,10 +269,10 @@ class PersonDetector(Node):
         # Here, if we have a bounding box, we find the position of the object and publish it
 
         # We calculate the two angles for the pixel
-        centerx=int((bounding_box[0]+bounding_box[2])/2)
-        centery=int((bounding_box[1]+bounding_box[3])/2)
-        horizontal_angle = a_horizontal * centerx + b_horizontal
-        vertical_angle = a_vertical * centery + b_vertical
+        center_x = int((bounding_box[0]+bounding_box[2])/2)
+        center_y = int((bounding_box[1]+bounding_box[3])/2)
+        horizontal_angle = a_horizontal * center_x + b_horizontal
+        vertical_angle = a_vertical * center_y + b_vertical
 
         if frame == ImageToFrameEnum.CAMERA_ANGLE:
             return horizontal_angle, vertical_angle
@@ -284,9 +288,17 @@ class PersonDetector(Node):
         if dist is None:
             return None
         # We get the x, y, z in the camera frame
-        camera_position_vector = np.array([c_horizontal * (dist * c_vertical),
-                      s_horizontal * (dist * c_vertical),
-                      s_vertical * (dist * c_horizontal)])
+        x_over_z = (C_X - center_x) / F_X
+        y_over_z = (C_X - center_y) / F_Y
+        z = dist / np.sqrt(1. + x_over_z ** 2 + y_over_z ** 2)
+        x = x_over_z * z
+        y = y_over_z * z
+        camera_x = z
+        camera_y = x
+        camera_z = y
+        camera_position_vector = np.array([camera_x,
+                          camera_y,
+                          camera_z])
 
         if frame == ImageToFrameEnum.CAMERA_FRAME:
             point = Point()
