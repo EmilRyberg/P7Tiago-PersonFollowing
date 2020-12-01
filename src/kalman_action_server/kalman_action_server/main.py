@@ -78,10 +78,10 @@ class KalmanTracking(Node):
 
         #### move camera
         current_time = time.time()
-        if current_time - self.last_sent_head_movement > 0.5:
+        if current_time - self.last_sent_head_movement > 0.75:
             self.last_sent_head_movement = current_time
-            if self.tracked_id != -1 or True:
-                tracked_person = next((x for x in persons), None)#next((x for x in persons if x.person_id == self.tracked_id), None)
+            if self.tracked_id != -1:
+                tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
                 self.get_logger().info(f"tracked person: {tracked_person}")
                 if tracked_person is not None:
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
@@ -148,7 +148,7 @@ class KalmanTracking(Node):
         msg.x = x
         msg.y = y
 
-        msg.min_duration = 0.25
+        msg.min_duration = 0.35
         msg.max_velocity = 25.
 
         self.head_pub.publish(msg)

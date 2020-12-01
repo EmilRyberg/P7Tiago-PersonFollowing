@@ -151,8 +151,9 @@ class PersonDetector(Node):
                     person.person_id = person_id
                     person_header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
                     person.pose = PoseStamped(header=person_header, pose=map_pose)
+                    bounding_box_height = int(person_detection[1] + person_detection[3])
                     person.image_x = int((person_detection[0] + person_detection[2]) / 2)
-                    person.image_y = int((person_detection[1] + person_detection[3]) / 2)
+                    person.image_y = int(person_detection[1]) + bounding_box_height // 4
                     persons.append(person)
 
                     self.get_logger().info(f"Robot pose is None?: {robot_pose}")
@@ -168,7 +169,7 @@ class PersonDetector(Node):
 
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = "map"  # TODO change this to the correct frame id of depth sensor
+        header.frame_id = "/map"  # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
@@ -237,7 +238,6 @@ class PersonDetector(Node):
 
         return person_id
 
-
     def find_best_match(self, list_of_tuples, distances) -> tuple:
         if isinstance(list_of_tuples, np.ndarray):
             list_of_tuples = list_of_tuples.tolist()
@@ -245,6 +245,8 @@ class PersonDetector(Node):
             distances = distances.tolist()
         if len(list_of_tuples) != len(distances):
             raise ValueError("list_of_tuples should be same length as distances")
+        if len(list_of_tuples) == 0:
+            return None
         min_distance = 3
         best_index = None
         for i, distance in enumerate(distances):
