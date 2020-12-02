@@ -11,40 +11,42 @@
 				<RateController hz="1.0">
 					<Sequence>
 						<IsHumanFound ID="isHumanFound" found="{found}" />
-						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
-							<PipelineSequence name="NavigateWithReplanning">
-								<RateController hz="1.0">
-									<RecoveryNode number_of_retries="1" name="ComputePathToPose">
-										<Sequence>
-											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
-												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
-											</GoalUpdater>
-											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}" />
-										</Sequence>
-										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
-									</RecoveryNode>
-								</RateController>
-								<RecoveryNode number_of_retries="1" name="FollowPath">
-									<FollowPath path="{truncated_path}" controller_id="FollowPath" />
-									<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap" />
-								</RecoveryNode>
-							</PipelineSequence>
-							<ReactiveFallback name="RecoveryFallback">
-								<GoalUpdated />
-								<SequenceStar name="RecoveryActions">
-									<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap" />
-									<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap" />
-									<Spin spin_dist="3.14" />
-									<Wait wait_duration="5" />
-								</SequenceStar>
-							</ReactiveFallback>
-						</RecoveryNode>
-						<Fallback>
-							<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
-							<Delay delay_msec="500">
+						<PipelineSequence>
+							<Fallback>
 								<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
-							</Delay>
-						</Fallback>
+								<Delay delay_msec="500">
+									<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+								</Delay>
+							</Fallback>
+							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
+								<PipelineSequence name="NavigateWithReplanning">
+									<RateController hz="1.0">
+										<RecoveryNode number_of_retries="1" name="ComputePathToPose">
+											<Sequence>
+												<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
+													<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
+												</GoalUpdater>
+												<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}" />
+											</Sequence>
+											<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
+										</RecoveryNode>
+									</RateController>
+									<RecoveryNode number_of_retries="1" name="FollowPath">
+										<FollowPath path="{truncated_path}" controller_id="FollowPath" />
+										<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap" />
+									</RecoveryNode>
+								</PipelineSequence>
+								<ReactiveFallback name="RecoveryFallback">
+									<GoalUpdated />
+									<SequenceStar name="RecoveryActions">
+										<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap" />
+										<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap" />
+										<Spin spin_dist="3.14" />
+										<Wait wait_duration="5" />
+									</SequenceStar>
+								</ReactiveFallback>
+							</RecoveryNode>
+						</PipelineSequence>
 					</Sequence>
 				</RateController>
 				<Sequence>
@@ -57,7 +59,7 @@
 										<RecoveryNode number_of_retries="1" name="ComputePathToPose">
 											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
 												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
-											</GoalUpdater>											
+											</GoalUpdater>
 											<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
 										</RecoveryNode>
 									</RateController>
