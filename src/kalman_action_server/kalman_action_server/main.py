@@ -25,6 +25,7 @@ class KalmanTracking(Node):
         self.should_track_id = -1
         self.tracked_id = -1
         self.last_sent_head_movement = time.time()
+        self.last_time = time.time()
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.visualization_publisher = self.create_publisher(PoseArray, "/detections_filtered", 1)
@@ -39,43 +40,41 @@ class KalmanTracking(Node):
         if len(persons) == 0:  # If no new IDs have come, these are simply updated
             for i in range(self.kf_number):
                 self.kf[i].predict(ttime)
-                self.kf[i].isTracked = False
-
+                self.kf[i].is_tracked = False
             return
 
-        newPersonIdx = 0
+        new_person_idx = 0
         for i in range(self.kf_number if self.kf_number > persons[-1].person_id + 1 else persons[-1].person_id + 1):
             # This runs when there is no update to the specific ID
-            if newPersonIdx >= len(persons):
-                newPersonIdx = len(persons) - 1
+            if new_person_idx >= len(persons):
+                new_person_idx = len(persons) - 1
 
-            if i != persons[newPersonIdx].person_id and i < self.kf_number:
+            if i != persons[new_person_idx].person_id and i < self.kf_number:
                 self.kf[i].predict(ttime)
-                self.kf[i].isTracked = False
+                self.kf[i].is_tracked = False
 
             # Runs when there is an update to a specific ID
-            elif (i == persons[newPersonIdx].person_id and i < self.kf_number):
+            elif (i == persons[new_person_idx].person_id and i < self.kf_number):
                 self.kf[i].predict(ttime)
 
                 # Getting the measured position into the right format
-                mPos = np.array([[persons[newPersonIdx].pose.pose.position.x],
-                                 [persons[newPersonIdx].pose.pose.position.y]])
+                map_position = np.array([[persons[new_person_idx].pose.pose.position.x],
+                                 [persons[new_person_idx].pose.pose.position.y]])
 
-                self.kf[i].update(mPos)
+                self.kf[i].update(map_position)
 
-                self.kf[i].isTracked = True
-                newPersonIdx += 1
-
+                self.kf[i].is_tracked = True
+                new_person_idx += 1
             # When a new ID has come
             else:
                 # Getting the measured position into the right format
-                mPos = np.array([persons[newPersonIdx].pose.pose.position.x,
-                                 persons[newPersonIdx].pose.pose.position.y])
+                map_position = np.array([persons[new_person_idx].pose.pose.position.x,
+                                 persons[new_person_idx].pose.pose.position.y])
 
-                self.kf.append(KfTracker(mPos, ttime))
+                self.kf.append(KfTracker(map_position, ttime))
                 self.kf_number += 1
 
-                newPersonIdx += 1
+                new_person_idx += 1
 
         #### move camera
         current_time = time.time()
@@ -118,7 +117,7 @@ class KalmanTracking(Node):
         map_pose = Pose()
         if self.kf_number != 0:  # Making sure atleast one kalman filter is running before indexing
             self.get_logger().info(f"Sending goal: {self.kf[id].x[0, 0]} - {self.kf[id].x[1, 0]} - "
-                                   f"isTracked: {self.kf[id].isTracked}")
+                                   f"is_tracked: {self.kf[id].is_tracked}")
             map_pose.position.x = self.kf[id].x[0, 0]
             map_pose.position.y = self.kf[id].x[1, 0]
             map_pose.position.z = 0.0
@@ -130,7 +129,7 @@ class KalmanTracking(Node):
             map_pose.orientation.z = orientation[2]
             map_pose.orientation.w = orientation[3]
             result.pose = PoseStamped(header=header, pose=map_pose)
-            result.is_tracked = self.kf[id].isTracked
+            result.is_tracked = self.kf[id].is_tracked
 
         # map_pose = Pose()
         # map_pose.position.x = -0.84
