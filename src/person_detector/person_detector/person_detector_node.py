@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.time import Time, Duration
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
 from sensor_msgs.msg import CompressedImage, Image
-from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose
+from geometry_msgs.msg import Point, PointStamped, PoseStamped, Pose, PoseArray
 from std_msgs.msg import Header
 import os
 from cv_bridge import CvBridge
@@ -20,6 +20,8 @@ import time
 import cv2
 import struct
 from rclpy.executors import SingleThreadedExecutor, MultiThreadedExecutor
+import traceback
+import os
 
 HFOV = 1.01229096615671
 W = 640
@@ -62,6 +64,7 @@ class PersonDetector(Node):
         on_gpu = self.get_parameter("on_gpu").get_parameter_value().bool_value
 
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
+        self.publisher_detections = self.create_publisher(PoseArray, "/persons_raw", 1)
         self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
         self.person_finder = PersonFinder(yolo_weights_path, on_gpu=True)
@@ -98,28 +101,39 @@ class PersonDetector(Node):
 
 
     def image_callback(self, msg: CompressedImage):
-        self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
-        #self.get_logger().info("got rgb image")
-        self.image_stamp = msg.header.stamp
-        self.image_is_updated = True
-        self.got_image_callback()
+        try:
+            self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            #self.get_logger().info("got rgb image")
+            self.image_stamp = msg.header.stamp
+            self.image_is_updated = True
+            self.got_image_callback()
+        except Exception as e:
+            trace = traceback.format_exc()
+            self.get_logger().fatal(trace)
+            self.destroy_node()
+
 
     def depth_callback(self, msg: CompressedImage):
-        depth_header_size = 12
-        raw_data = msg.data[depth_header_size:]
-        raw_data = np.array(raw_data, dtype=np.uint8)
-        depth_img_raw = cv2.imdecode(raw_data, cv2.IMREAD_UNCHANGED)
-        raw_header = msg.data[:depth_header_size]
-        # header: int, float, float
-        [compfmt, depthQuantA, depthQuantB] = struct.unpack('iff', raw_header)
-        depth_img_scaled = depthQuantA / (depth_img_raw.astype(np.float32) - depthQuantB)
-        # filter max values
-        depth_img_scaled[depth_img_raw == 0] = 0
-        self.depth_image = depth_img_scaled
-        #self.get_logger().info(f"got depth image")
-        self.depth_stamp = msg.header.stamp
-        self.depth_is_updated = True
-        self.got_image_callback()
+        try:
+            depth_header_size = 12
+            raw_data = msg.data[depth_header_size:]
+            raw_data = np.array(raw_data, dtype=np.uint8)
+            depth_img_raw = cv2.imdecode(raw_data, cv2.IMREAD_UNCHANGED)
+            raw_header = msg.data[:depth_header_size]
+            # header: int, float, float
+            [compfmt, depthQuantA, depthQuantB] = struct.unpack('iff', raw_header)
+            depth_img_scaled = depthQuantA / (depth_img_raw.astype(np.float32) - depthQuantB)
+            # filter max values
+            depth_img_scaled[depth_img_raw == 0] = 0
+            self.depth_image = depth_img_scaled
+            #self.get_logger().info(f"got depth image")
+            self.depth_stamp = msg.header.stamp
+            self.depth_is_updated = True
+            self.got_image_callback()
+        except Exception as e:
+            trace = traceback.format_exc()
+            self.get_logger().fatal(trace)
+            self.destroy_node()
 
     def got_image_callback(self):
         if not self.image_is_updated or not self.depth_is_updated:
@@ -174,6 +188,11 @@ class PersonDetector(Node):
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
         self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
+        poses = []
+        for person in persons:
+            poses.append(person.pose.pose)
+        pose_array = PoseArray(header=header, poses=poses)
+        self.publisher_detections.publish(pose_array)
         #self.get_logger().info("Published")
 
     def find_same_person(self, features):
@@ -428,9 +447,10 @@ def main(args=None):
     executor = MultiThreadedExecutor()
     executor.add_node(tf_listener_node)
     executor.add_node(person_detector)
-    executor.spin()
 
+    executor.spin()
     executor.shutdown()
+
 
 
 if __name__ == '__main__':
