@@ -113,6 +113,15 @@ class KalmanTracking(Node):
             id = self.should_track_id
         self.tracked_id = id
 
+        if id not in self.filters.keys():
+            self.get_logger().warn(f"Got id {id}, which does not exist")
+            return result
+
+        if cb_handle.request.remove_filter:
+            del self.filters[id]
+            cb_handle.succeed()
+            return result
+
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
         map_pose = Pose()
         if self.current_person_id != 0:  # Making sure atleast one kalman filter is running before indexing
@@ -143,7 +152,6 @@ class KalmanTracking(Node):
         # result.is_tracked = False
 
         self.get_logger().info("Returning point")
-
         cb_handle.succeed()  # Saying the goal was accomplished
 
         result.tracked_id = id  # Replying which ID is to be tracked, essentially forwarding from earlier
@@ -160,11 +168,8 @@ class KalmanTracking(Node):
 
     def move_head(self, x, y, min_duration=0.5):
         msg = BridgeAction()
-
-        # self.get_logger().info(f"move head horizontal: {horizontal}")
         msg.x = x
         msg.y = y
-
         msg.min_duration = min_duration
         msg.max_velocity = 25.
 
