@@ -408,26 +408,30 @@ class PersonDetector(Node):
         self.get_logger().info(f"Angle: {angle}, x: {x}")
         return x < 3 and np.abs(angle) < 0.3491
 
-    def read_depth(self, dImg, bbox):
-        centerx=int((bbox[0]+bbox[2])/2)
-        centery=int((bbox[1]+bbox[3])/2)
-        x1 = centerx - 10
-        y1 = centery - 10
-        x2 = centerx + 10
-        y2 = centery + 10
+    def read_depth(self, depth_image, bbox):
+        center_x=int((bbox[0]+bbox[2])/2)
+        center_y=int((bbox[1]+bbox[3])/2)
+        x = center_x - 10
+        y = center_y - 10
+        x_end = center_x + 10
+        y_end = center_y + 10
         count = 0
         dist = 0
-        while x1 <= x2:
-            while y1 <= y2:
-                if dImg.item(y1, x1) > 0.01:
-                    dist = dist + dImg.item(y1, x1)
+        distances = []
+
+        while x <= x_end:
+            while y <= y_end:
+                if depth_image.item(y, x) > 0.01:
+                    distances.append(depth_image.item(y, x))
+                    dist = dist + depth_image.item(y, x)
                     count += 1
-                y1 = y1 + 1
-            x1 = x1 + 1
+                y = y + 1
+            x = x + 1
         if count == 0:
             return None
+        median_depth = np.median(np.array(distances))
         average_depth = dist / count
-        return average_depth
+        return median_depth
 
 
 class TfListener(Node):
