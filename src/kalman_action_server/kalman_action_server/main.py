@@ -17,7 +17,7 @@ from typing import List, Tuple
 def sort_obj_based_on_id(obj):
     return obj.person_id
 
-VELOCITY_NORM_THRESHOLD = 5 ## m/s. 5 m/s -> 18 km/h
+VELOCITY_NORM_THRESHOLD = 1 ## m/s. 5 m/s -> 18 km/h
 
 
 class KalmanTracking(Node):
@@ -77,7 +77,10 @@ class KalmanTracking(Node):
                 if vel_norm >= VELOCITY_NORM_THRESHOLD:
                     self.get_logger().warn(f"Discarding measurement of person: {i}, since the velocity is {vel_norm} m/s")
                     self.kf[i].is_tracked = False
+                    new_person_idx += 1
                     continue
+
+                self.person_last_positions[i] = (map_position, ttime)
 
                 self.kf[i].update(map_position)
 
@@ -86,8 +89,8 @@ class KalmanTracking(Node):
             # When a new ID has come
             else:
                 # Getting the measured position into the right format
-                map_position = np.array([persons[new_person_idx].pose.pose.position.x,
-                                 persons[new_person_idx].pose.pose.position.y])
+                map_position = np.array([[persons[new_person_idx].pose.pose.position.x],
+                                 [persons[new_person_idx].pose.pose.position.y]])
                 self.person_last_positions.append((map_position, ttime))
 
                 self.kf.append(KfTracker(map_position, ttime))
