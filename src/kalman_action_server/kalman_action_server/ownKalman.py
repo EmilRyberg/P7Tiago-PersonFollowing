@@ -21,7 +21,7 @@ class KfTracker:
     def __init__(self, map_position, time_stamp):
         self.prev_time = time_stamp
         self.is_tracked = True
-        self.x = np.array([[map_position[0]], [map_position[1]], [0.], [0.]])
+        self.x = np.array([[map_position[0, 0]], [map_position[1, 0]], [0.], [0.]])
         self.P = np.eye(4) * 1000.
         # The dynamics matrix. [0, 2] and [1, 3] will be replaced by dt (sampling period)
         self.F = np.array([[1., 0., 1., 0.],
