@@ -1,5 +1,6 @@
 # Goal parameter
 int32 id # can be -1
+bool remove_filter
 ---
 # Result
 bool is_tracked
