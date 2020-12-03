@@ -81,15 +81,22 @@
 							<SetBlackboard output_key="moved_flag" value="true" />
 						</Sequence>
 					</Fallback>
-					<RateController hz="0.5">
-						<RetryUntilSuccesful num_attempts="20">
-							<Sequence>
-								<Spin spin_dist="0.25" />
-								<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
-								<SetBlackboard output_key="moved_flag" value="false" />
-							</Sequence>
-						</RetryUntilSuccesful>
-					</RateController>
+					<Fallback>
+						<RateController hz="0.5">
+							<RetryUntilSuccesful num_attempts="20">
+								<Sequence>
+									<Spin spin_dist="0.25" />
+									<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+									<SetBlackboard output_key="moved_flag" value="false" />
+								</Sequence>
+							</RetryUntilSuccesful>
+						</RateController>
+						<Sequence>
+							<SetBlackboard output_key="{got_initial_goal_output}" value="false" />
+							<SetBlackboard output_key="{current_id}" value="-1" />
+							<SetBlackboard output_key="moved_flag" value="false" />
+						</Sequence>
+					</Fallback>
 				</Sequence>
 			</Fallback>
 		</Repeat>

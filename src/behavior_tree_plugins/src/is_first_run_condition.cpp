@@ -26,12 +26,12 @@ namespace tiago_person_following
     
     first_run_var_ = true;
     got_initial_goal_ = false;
-    std::cerr << "abcabc " << std::endl;
+    std::cerr << "Initialising tree" << std::endl;
   }
 
   BT::NodeStatus IsFirstRunCondition::tick()
   {
-    std::cerr << "Is first run? " << first_run_var_ << std::endl;
+    std::cerr << "First run variable: " << first_run_var_ << std::endl;
     if(first_run_var_){
       
       setOutput("found", false);
@@ -47,11 +47,11 @@ namespace tiago_person_following
     else
     {
       getInput("got_initial_goal_input", got_initial_goal_);
-      std::cerr << "Initial goal? " << got_initial_goal_ << std::endl;
       if (got_initial_goal_) {
+        std::cerr << "Already have initial goal." << got_initial_goal_ << std::endl;
         return BT::NodeStatus::FAILURE;
       }
-
+      std::cerr << "Doesn't have initial goal yet." << got_initial_goal_ << std::endl;
       return BT::NodeStatus::SUCCESS;
     }
   }

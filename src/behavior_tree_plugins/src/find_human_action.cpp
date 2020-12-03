@@ -35,14 +35,15 @@ namespace tiago_person_following
   //code that runs when the action server returns a success result
   BT::NodeStatus FindHumanAction::on_success()
   {
-    RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
+    RCLCPP_INFO(node_->get_logger(), "FindHuman: Got response from Action Server");
 
     person_id = result_.result->tracked_id; 
 
     //now we could theoretically use the findHumanAction for both a new human and same human
     if(look_for_id == -1) //should only execute on first run (since look_for_id = -1 on first run only)
     {
-      look_for_id = result_.result->tracked_id;
+      look_for_id = result_.result->tracked_id;    
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Setting current_id to %d", look_for_id);
       setOutput("current_id", result_.result->tracked_id);
       setOutput("person_info", result_.result->pose);
       RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
@@ -51,9 +52,9 @@ namespace tiago_person_following
       setOutput("got_initial_goal_output", true);
       return BT::NodeStatus::SUCCESS;
     } 
-    else if(result_.result->is_tracked)  //should only run when the requested ID is the ID we recieve 
+    else if(result_.result->is_tracked)  //should only run when the person is tracked
     {
-      RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Found same person. ID: %d", look_for_id);
       setOutput("person_info", result_.result->pose);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
@@ -61,7 +62,7 @@ namespace tiago_person_following
     }
     else //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
     {
-      RCLCPP_INFO(node_->get_logger(), "Could not find same person");
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Could not find same person, got tracked_id: %d", result_.result->tracked_id);
       setOutput("found", false);
       return BT::NodeStatus::FAILURE;
     }
