@@ -17,7 +17,7 @@ from typing import List, Tuple
 def sort_obj_based_on_id(obj):
     return obj.person_id
 
-VELOCITY_NORM_THRESHOLD = 1 ## m/s. 5 m/s -> 18 km/h
+VELOCITY_NORM_THRESHOLD = 2 ## m/s. 5 m/s -> 18 km/h
 
 
 class KalmanTracking(Node):

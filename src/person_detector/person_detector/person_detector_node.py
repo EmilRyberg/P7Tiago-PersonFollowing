@@ -54,7 +54,7 @@ class PersonDetector(Node):
         self.declare_parameter("feature_weights_path")
         self.declare_parameter("yolo_weights_path")
         self.declare_parameter("on_gpu", value=True)
-        qos_profile=QoSProfile(depth=1)
+        qos_profile = QoSProfile(depth=1)
         qos_profile.reliability = QoSReliabilityPolicy.BEST_EFFORT
         qos_profile.history = QoSHistoryPolicy.KEEP_LAST
         feature_weights_path = self.get_parameter("feature_weights_path").get_parameter_value().string_value
@@ -102,6 +102,8 @@ class PersonDetector(Node):
 
     def image_callback(self, msg: CompressedImage):
         try:
+            if self.image_is_updated:
+                return
             self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
             #self.get_logger().info("got rgb image")
             self.image_stamp = msg.header.stamp
@@ -115,6 +117,8 @@ class PersonDetector(Node):
 
     def depth_callback(self, msg: CompressedImage):
         try:
+            if self.depth_is_updated:
+                return
             depth_header_size = 12
             raw_data = msg.data[depth_header_size:]
             raw_data = np.array(raw_data, dtype=np.uint8)
@@ -138,10 +142,22 @@ class PersonDetector(Node):
     def got_image_callback(self):
         if not self.image_is_updated or not self.depth_is_updated:
             return
+        delay_threshold = 0.15
+        image_delay = (self.image_stamp.sec + self.image_stamp.nanosec/1e9) - (self.depth_stamp.sec + self.depth_stamp.nanosec/1e9)
+        #self.get_logger().info(f"image delay {image_delay}")
+        if image_delay > delay_threshold:
+            self.depth_is_updated = False
+            #self.get_logger().warn("Discarding depth image (too old)")
+            return
+        elif image_delay < -delay_threshold:
+            self.image_is_updated = False
+            #self.get_logger().warn("Discarding RGB image (too old)")
+            return
+
         self.image_is_updated = False
         self.depth_is_updated = False
 
-        self.get_logger().info("Running")
+        #self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
         persons = []
         id_to_track = -1
@@ -186,7 +202,7 @@ class PersonDetector(Node):
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = "/map"  # TODO change this to the correct frame id of depth sensor
         person_info = PersonInfoList(header=header, persons=persons, tracked_id=id_to_track)
-        self.get_logger().info(f"Publishing {person_info}")
+        #self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
         poses = []
         for person in persons:
@@ -432,6 +448,9 @@ class PersonDetector(Node):
         median_depth = np.median(np.array(distances))
         average_depth = dist / count
         return median_depth
+
+    def calculate_delay(self, stamp_new, stamp_old):
+        return (stamp_new.sec + stamp_new.nanosec/1e9) - (stamp_old.sec + stamp_old.nanosec/1e9)
 
 
 class TfListener(Node):
