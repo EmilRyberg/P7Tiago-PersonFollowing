@@ -10,17 +10,20 @@ from scipy.spatial.transform import Rotation
 import time
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from std_msgs.msg import Header
+from typing import List, Tuple
 
 
 # Used for sorting the list from the vision module
 def sort_obj_based_on_id(obj):
     return obj.person_id
 
+VELOCITY_NORM_THRESHOLD = 5 ## m/s. 5 m/s -> 18 km/h
+
 
 class KalmanTracking(Node):
     def __init__(self):
         super().__init__('kalman_action_server')
-        self.kf = []
+        self.kf: List[KfTracker] = []
         self.kf_number = 0
         self.should_track_id = -1
         self.tracked_id = -1
@@ -29,6 +32,7 @@ class KalmanTracking(Node):
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
+        self.person_last_positions: List[Tuple[np.ndarray, float]] = []
 
     def detection_cb(self, msg: PersonInfoList):
         ttime = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
@@ -44,6 +48,7 @@ class KalmanTracking(Node):
 
         new_person_idx = 0
         for i in range(self.kf_number if self.kf_number > persons[-1].person_id + 1 else persons[-1].person_id + 1):
+
             # This runs when there is no update to the specific ID
             if new_person_idx >= len(persons):
                 new_person_idx = len(persons) - 1
@@ -53,12 +58,25 @@ class KalmanTracking(Node):
                 self.kf[i].is_tracked = False
 
             # Runs when there is an update to a specific ID
-            elif (i == persons[new_person_idx].person_id and i < self.kf_number):
+            elif i == persons[new_person_idx].person_id and i < self.kf_number:
                 self.kf[i].predict(ttime)
 
                 # Getting the measured position into the right format
                 map_position = np.array([[persons[new_person_idx].pose.pose.position.x],
                                  [persons[new_person_idx].pose.pose.position.y]])
+
+                last_position, last_time = self.person_last_positions[i]
+                delta_time = ttime - last_time
+                x_diff = map_position[0, 0] - last_position[0, 0]
+                y_diff = map_position[1, 0] - last_position[1, 0]
+                x_vel = x_diff / delta_time
+                y_vel = y_diff / delta_time
+                vel_norm = math.sqrt(x_vel ** 2 + y_vel ** 2)
+
+                if vel_norm >= VELOCITY_NORM_THRESHOLD:
+                    self.get_logger().warn(f"Discarding measurement of person: {i}, since the velocity is {vel_norm} m/s")
+                    self.kf[i].is_tracked = False
+                    continue
 
                 self.kf[i].update(map_position)
 
@@ -69,6 +87,7 @@ class KalmanTracking(Node):
                 # Getting the measured position into the right format
                 map_position = np.array([persons[new_person_idx].pose.pose.position.x,
                                  persons[new_person_idx].pose.pose.position.y])
+                self.person_last_positions.append((map_position, ttime))
 
                 self.kf.append(KfTracker(map_position, ttime))
                 self.kf_number += 1
