@@ -47,6 +47,7 @@ namespace tiago_person_following
 
         // prolly this this part wrong because i am a dumbass
         private:
+        bool has_sent_goal;
         int32_t look_for_id;
         int32_t person_id;
         geometry_msgs::msg::PoseStamped pose;

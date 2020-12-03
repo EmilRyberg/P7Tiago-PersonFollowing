@@ -82,8 +82,8 @@ endif()
 add_library(find_human_action SHARED src/find_human_action.cpp)
 list(APPEND plugin_libs find_human_action)
 
-add_library(find_same_human_action SHARED src/find_same_human_action.cpp)
-list(APPEND plugin_libs find_same_human_action)
+add_library(reset_kalman_action SHARED src/reset_kalman_action.cpp)
+list(APPEND plugin_libs reset_kalman_action)
 
 add_library(has_moved_condition SHARED src/has_moved_condition.cpp)
 list(APPEND plugin_libs has_moved_condition)
@@ -106,7 +106,7 @@ target_include_directories(find_human_action PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_include_directories(find_same_human_action PUBLIC
+target_include_directories(reset_kalman_action PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
