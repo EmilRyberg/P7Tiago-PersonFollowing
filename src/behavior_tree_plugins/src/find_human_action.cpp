@@ -51,7 +51,6 @@ namespace tiago_person_following
       look_for_id = result_.result->tracked_id;    
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Setting current_id to %d", look_for_id);
       setOutput("current_id", result_.result->tracked_id);
-      setOutput("person_info", result_.result->pose);
       RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
@@ -61,7 +60,6 @@ namespace tiago_person_following
     else if(result_.result->is_tracked)  //should only run when the person is tracked
     {
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Found same person. ID: %d", look_for_id);
-      setOutput("person_info", result_.result->pose);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
       return BT::NodeStatus::SUCCESS;
@@ -70,6 +68,7 @@ namespace tiago_person_following
     {
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Could not find same person, got tracked_id: %d", result_.result->tracked_id);
       setOutput("found", false);
+      setOutput("goal", result_.result->pose); //Move to the predicted position
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -78,6 +77,7 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
+    setOutput("found", false);
     return BT::NodeStatus::FAILURE;
   }
 
@@ -85,6 +85,7 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
+    setOutput("found", false);
     return BT::NodeStatus::FAILURE;
   }
 }

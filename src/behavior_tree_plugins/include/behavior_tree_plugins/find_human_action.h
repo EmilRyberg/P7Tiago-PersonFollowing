@@ -39,7 +39,6 @@ namespace tiago_person_following
                 BT::InputPort<int32_t>("target_id"),
                 BT::OutputPort<int32_t>("current_id"),
                 BT::OutputPort<bool>("found"),
-                BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
                 BT::OutputPort<bool>("got_initial_goal_output"),
                 BT::OutputPort<geometry_msgs::msg::PoseStamped>("goal")
             });
