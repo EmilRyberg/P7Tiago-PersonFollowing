@@ -10,21 +10,16 @@ from scipy.spatial.transform import Rotation
 import time
 from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray
 from std_msgs.msg import Header
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
-
-# Used for sorting the list from the vision module
-def sort_obj_based_on_id(obj):
-    return obj.person_id
-
-VELOCITY_NORM_THRESHOLD = 2 ## m/s. 5 m/s -> 18 km/h
+VELOCITY_NORM_THRESHOLD = 2  # m/s. 2 m/s -> 7.2 km/h
 
 
 class KalmanTracking(Node):
     def __init__(self):
         super().__init__('kalman_action_server')
-        self.kf: List[KfTracker] = []
-        self.kf_number = 0
+        self.filters: Dict[int, KfTracker] = {}
+        self.current_person_id = 0
         self.should_track_id = -1
         self.tracked_id = -1
         self.last_sent_head_movement = time.time()
@@ -33,38 +28,26 @@ class KalmanTracking(Node):
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.visualization_publisher = self.create_publisher(PoseArray, "/detections_filtered", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
-        self.person_last_positions: List[Tuple[np.ndarray, float]] = []
+        self.person_last_positions: Dict[int, Tuple[np.ndarray, float]] = {}
 
     def detection_cb(self, msg: PersonInfoList):
         ttime = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
         persons = msg.persons
-        persons.sort(key=sort_obj_based_on_id)  # Sorting based on ID
         self.should_track_id = msg.tracked_id
 
-        if len(persons) == 0:  # If no new IDs have come, these are simply updated
-            for i in range(self.kf_number):
-                self.kf[i].predict(ttime)
-                self.kf[i].is_tracked = False
-            return
-
-        new_person_idx = 0
-        for i in range(self.kf_number if self.kf_number > persons[-1].person_id + 1 else persons[-1].person_id + 1):
-
-            # This runs when there is no update to the specific ID
-            if new_person_idx >= len(persons):
-                new_person_idx = len(persons) - 1
-
-            if i != persons[new_person_idx].person_id and i < self.kf_number:
-                self.kf[i].predict(ttime)
-                self.kf[i].is_tracked = False
-
-            # Runs when there is an update to a specific ID
-            elif i == persons[new_person_idx].person_id and i < self.kf_number:
-                self.kf[i].predict(ttime)
+        for person_id, kf_filter in self.filters.items():
+            measurement = [person for person in persons if person.person_id == person_id]
+            if len(measurement) == 0:
+                # person not in measurement, predict
+                kf_filter.predict(ttime)
+                kf_filter.is_tracked = False
+            else:
+                measurement_item = measurement[0]
+                kf_filter.predict(ttime)
 
                 # Getting the measured position into the right format
-                map_position = np.array([[persons[new_person_idx].pose.pose.position.x],
-                                 [persons[new_person_idx].pose.pose.position.y]])
+                map_position = np.array([[measurement_item.pose.pose.position.x],
+                                         [measurement_item.pose.pose.position.y]])
 
                 last_position, last_time = self.person_last_positions[i]
                 delta_time = ttime - last_time
@@ -75,32 +58,27 @@ class KalmanTracking(Node):
                 vel_norm = math.sqrt(x_vel ** 2 + y_vel ** 2)
 
                 if vel_norm >= VELOCITY_NORM_THRESHOLD:
-                    self.get_logger().warn(f"Discarding measurement of person: {i}, since the velocity is {vel_norm} m/s")
-                    self.kf[i].is_tracked = False
-                    new_person_idx += 1
-                    continue
+                    self.get_logger().warn(
+                        f"Discarding measurement of person: {person_id}, since the velocity is {vel_norm} m/s")
+                    kf_filter.is_tracked = False
+                else:
+                    self.person_last_positions[person_id] = (map_position, ttime)
+                    kf_filter.update(map_position)
+                    kf_filter.is_tracked = True
 
-                self.person_last_positions[i] = (map_position, ttime)
+        new_persons = [person for person in persons if person.person_id not in self.filters.keys()]
+        for new_person in new_persons:
+            # Getting the measured position into the right format
+            map_position = np.array([[new_person.pose.pose.position.x],
+                                     [new_person.pose.pose.position.y]])
+            self.person_last_positions[self.current_person_id] = (map_position, ttime)
 
-                self.kf[i].update(map_position)
-
-                self.kf[i].is_tracked = True
-                new_person_idx += 1
-            # When a new ID has come
-            else:
-                # Getting the measured position into the right format
-                map_position = np.array([[persons[new_person_idx].pose.pose.position.x],
-                                 [persons[new_person_idx].pose.pose.position.y]])
-                self.person_last_positions.append((map_position, ttime))
-
-                self.kf.append(KfTracker(map_position, ttime))
-                self.kf_number += 1
-
-                new_person_idx += 1
+            self.filters[self.current_person_id] = KfTracker(map_position, ttime)
+            self.current_person_id += 1
 
         #### move camera
         current_time = time.time()
-        if current_time - self.last_sent_head_movement > 2:
+        if current_time - self.last_sent_head_movement > 1.5:
             self.last_sent_head_movement = current_time
             if self.tracked_id != -1:
                 tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
@@ -109,13 +87,13 @@ class KalmanTracking(Node):
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
 
         poses = []
-        for filter in self.kf:
+        for kf_filter in self.filters.values():
             pose = Pose()
-            pose.position.x = filter.x[0, 0]
-            pose.position.y = filter.x[1, 0]
+            pose.position.x = kf_filter.x[0, 0]
+            pose.position.y = kf_filter.x[1, 0]
             pose.position.z = 0.0
-            #self.get_logger().info(f"velocities x={filter.x[2, 0]} y={filter.x[3, 0]}")
-            orientation = self.get_orientation(filter.x[2, 0], filter.x[3, 0])
+            # self.get_logger().info(f"velocities x={filter.x[2, 0]} y={filter.x[3, 0]}")
+            orientation = self.get_orientation(kf_filter.x[2, 0], kf_filter.x[3, 0])
             pose.orientation.x = orientation[0]
             pose.orientation.y = orientation[1]
             pose.orientation.z = orientation[2]
@@ -135,23 +113,32 @@ class KalmanTracking(Node):
             id = self.should_track_id
         self.tracked_id = id
 
+        if id not in self.filters.keys():
+            self.get_logger().warn(f"Got id {id}, which does not exist")
+            return result
+
+        if cb_handle.request.remove_filter:
+            del self.filters[id]
+            cb_handle.succeed()
+            return result
+
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
         map_pose = Pose()
-        if self.kf_number != 0:  # Making sure atleast one kalman filter is running before indexing
-            self.get_logger().info(f"Sending goal: {self.kf[id].x[0, 0]} - {self.kf[id].x[1, 0]} - "
-                                   f"is_tracked: {self.kf[id].is_tracked}")
-            map_pose.position.x = self.kf[id].x[0, 0]
-            map_pose.position.y = self.kf[id].x[1, 0]
+        if self.current_person_id != 0:  # Making sure atleast one kalman filter is running before indexing
+            self.get_logger().info(f"Sending goal: {self.filters[id].x[0, 0]} - {self.filters[id].x[1, 0]} - "
+                                   f"is_tracked: {self.filters[id].is_tracked}")
+            map_pose.position.x = self.filters[id].x[0, 0]
+            map_pose.position.y = self.filters[id].x[1, 0]
             map_pose.position.z = 0.0
 
-            orientation = self.get_orientation(self.kf[id].x[2, 0], self.kf[id].x[3, 0])
+            orientation = self.get_orientation(self.filters[id].x[2, 0], self.filters[id].x[3, 0])
 
             map_pose.orientation.x = orientation[0]
             map_pose.orientation.y = orientation[1]
             map_pose.orientation.z = orientation[2]
             map_pose.orientation.w = orientation[3]
             result.pose = PoseStamped(header=header, pose=map_pose)
-            result.is_tracked = self.kf[id].is_tracked
+            result.is_tracked = self.filters[id].is_tracked
 
         # map_pose = Pose()
         # map_pose.position.x = -0.84
@@ -165,7 +152,6 @@ class KalmanTracking(Node):
         # result.is_tracked = False
 
         self.get_logger().info("Returning point")
-
         cb_handle.succeed()  # Saying the goal was accomplished
 
         result.tracked_id = id  # Replying which ID is to be tracked, essentially forwarding from earlier
@@ -182,11 +168,8 @@ class KalmanTracking(Node):
 
     def move_head(self, x, y, min_duration=0.5):
         msg = BridgeAction()
-
-        # self.get_logger().info(f"move head horizontal: {horizontal}")
         msg.x = x
         msg.y = y
-
         msg.min_duration = min_duration
         msg.max_velocity = 25.
 

@@ -5,17 +5,17 @@
 		<Repeat num_cycles="9999999">
 			<Fallback>
 				<Sequence>
-					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" got_initial_goal_output="{got_initial_goal_output}" got_initial_goal_input="{got_initial_goal_output}" />
-					<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+					<IsFirstRun name="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" got_initial_goal_output="{got_initial_goal_output}" got_initial_goal_input="{got_initial_goal_output}" />
+					<FindHuman name="findHuman1" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
 				</Sequence>
 				<RateController hz="1.0">
 					<Sequence>
-						<IsHumanFound ID="isHumanFound" found="{found}" />
+						<IsHumanFound name="isHumanFound1" found="{found}" />
 						<PipelineSequence>
 							<Fallback>
-								<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+								<FindHuman name="findHuman2" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
 								<Delay delay_msec="500">
-									<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+									<FindHuman name="findHuman3" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
 								</Delay>
 							</Fallback>
 							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
@@ -51,7 +51,7 @@
 				</RateController>
 				<Sequence>
 					<Fallback>
-						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}" />
+						<HasMoved name="hasMovedToLastPosition" moved_flag="{moved_flag}" />
 						<Sequence>
 							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
 								<PipelineSequence name="NavigateWithReplanning">
@@ -79,6 +79,7 @@
 								</ReactiveFallback>
 							</RecoveryNode>
 							<SetBlackboard output_key="moved_flag" value="true" />
+							<ResetKalman name="resetKalman" />
 						</Sequence>
 					</Fallback>
 					<Fallback>
@@ -86,7 +87,7 @@
 							<RetryUntilSuccesful num_attempts="20">
 								<Sequence>
 									<Spin spin_dist="0.25" />
-									<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+									<FindHuman name="findHuman4" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
 									<SetBlackboard output_key="moved_flag" value="false" />
 								</Sequence>
 							</RetryUntilSuccesful>

@@ -17,14 +17,19 @@ namespace tiago_person_following
     const BT::NodeConfiguration & config)
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
-    //getInput("target_id", look_for_id); //i.e. dont look for a specific ID, but look and track a human and return with the ID
+    has_sent_goal = false;
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
     getInput("target_id", look_for_id);
-    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
-    goal_.id = look_for_id;  //and this should send the ID to the action server 
+    if (!has_sent_goal){
+      RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
+      goal_.id = look_for_id;  //and this should send the ID to the action server 
+      has_sent_goal = true;
+    }
+    else RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Has already sent goal");
+
   }  
 
   //code that runs when waiting for result
@@ -36,6 +41,7 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_success()
   {
     RCLCPP_INFO(node_->get_logger(), "FindHuman: Got response from Action Server");
+    has_sent_goal=false; //Reset the has sent goal handler.
 
     person_id = result_.result->tracked_id; 
 
@@ -45,7 +51,6 @@ namespace tiago_person_following
       look_for_id = result_.result->tracked_id;    
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Setting current_id to %d", look_for_id);
       setOutput("current_id", result_.result->tracked_id);
-      setOutput("person_info", result_.result->pose);
       RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
@@ -55,7 +60,6 @@ namespace tiago_person_following
     else if(result_.result->is_tracked)  //should only run when the person is tracked
     {
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Found same person. ID: %d", look_for_id);
-      setOutput("person_info", result_.result->pose);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
       return BT::NodeStatus::SUCCESS;
@@ -64,6 +68,7 @@ namespace tiago_person_following
     {
       RCLCPP_INFO(node_->get_logger(), "FindHuman: Could not find same person, got tracked_id: %d", result_.result->tracked_id);
       setOutput("found", false);
+      setOutput("goal", result_.result->pose); //Move to the predicted position
       return BT::NodeStatus::FAILURE;
     }
   }
@@ -72,6 +77,7 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
+    setOutput("found", false);
     return BT::NodeStatus::FAILURE;
   }
 
@@ -79,6 +85,7 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
+    setOutput("found", false);
     return BT::NodeStatus::FAILURE;
   }
 }

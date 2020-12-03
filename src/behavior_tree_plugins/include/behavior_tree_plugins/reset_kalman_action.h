@@ -5,19 +5,18 @@
 #include <string>
 
 #include "nav2_behavior_tree/bt_action_node.hpp"
+#include "nav2_msgs/action/wait.hpp"
+#include "person_follower_interfaces/action/kalman.hpp"
 #include "nav2_util/geometry_utils.hpp"
 
 #include "behaviortree_cpp_v3/bt_factory.h"
-#include "nav2_msgs/action/wait.h"
-#include "person_follower_interfaces/action/kalman.hpp"
-
 
 namespace tiago_person_following
 {
-    class FindSameHumanAction : public nav2_behavior_tree::BtActionNode<person_follower_interfaces::action::Kalman>
+    class ResetKalmanAction : public nav2_behavior_tree::BtActionNode<person_follower_interfaces::action::Kalman>
     {
         public:
-        FindSameHumanAction(
+        ResetKalmanAction(
             const std::string& xml_tag_name,
             const std::string & action_name,
             const BT::NodeConfiguration& config);
@@ -36,18 +35,9 @@ namespace tiago_person_following
         static BT::PortsList providedPorts()
         {
             return providedBasicPorts(
-                {
-                BT::InputPort<int32_t>("current_id"),
-                BT::OutputPort<bool>("found"),
-                BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
-                BT::OutputPort<geometry_msgs::msg::PoseStamped>("goal")
-                });
+            {   
+            });
         }
-
-        // prolly this this part wrong because i am a dumbass
-        private:
-        int32_t current_id;
-        geometry_msgs::msg::PoseStamped pose;
     };
 }
 #endif  // PERSON_FOLLOW_LOOK_FOR_HUMAN_ACTION_HPP_
