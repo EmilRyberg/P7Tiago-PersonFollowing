@@ -92,7 +92,7 @@ class KalmanTracking(Node):
             pose.position.x = filter.x[0, 0]
             pose.position.y = filter.x[1, 0]
             pose.position.z = 0.0
-            self.get_logger().info(f"velocities x={filter.x[2, 0]} y={filter.x[3, 0]}")
+            #self.get_logger().info(f"velocities x={filter.x[2, 0]} y={filter.x[3, 0]}")
             orientation = self.get_orientation(filter.x[2, 0], filter.x[3, 0])
             pose.orientation.x = orientation[0]
             pose.orientation.y = orientation[1]
