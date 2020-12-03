@@ -4,7 +4,6 @@
 #include "behavior_tree_plugins/reset_kalman_action.h"
 #include "nav2_behavior_tree/bt_action_node.hpp"
 #include "person_follower_interfaces/action/kalman.hpp"
-//#include "person_follower_interfaces/msg/PersonInfo.msg"
 
 #include "iostream"
 #include <cstdio>
@@ -34,6 +33,7 @@ namespace tiago_person_following
   BT::NodeStatus ResetKalmanAction::on_success()
   {
     RCLCPP_INFO(node_->get_logger(), "ResetKalman: Got response from Action Server");
+      return BT::NodeStatus::SUCCESS;
   }
 
   //code that runs when the action server returns an aborted result
