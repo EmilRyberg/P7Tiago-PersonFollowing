@@ -187,11 +187,11 @@ class PersonDetector(Node):
                     person.image_y = 240 #int(person_detection[1]) + bounding_box_height // 4
                     persons.append(person)
 
-                    self.get_logger().info(f"Robot pose is None?: {robot_pose}")
+                    #self.get_logger().info(f"Robot pose is None?: {robot_pose}")
 
                     if robot_pose is not None:
                         if self.is_person_to_track(robot_pose.position.x, robot_pose.position.y):
-                            self.get_logger().info(f"Found person to track")
+                            #self.get_logger().info(f"Found person to track")
                             id_to_track = person_id
 
                     person.horizontal_angle = horizontal_angle
@@ -205,11 +205,13 @@ class PersonDetector(Node):
         #self.get_logger().info(f"Publishing {person_info}")
         self.publisher_.publish(person_info)
         poses = []
+        person_ids = []
         for person in persons:
             poses.append(person.pose.pose)
+            person_ids.append(person.person_id)
         pose_array = PoseArray(header=header, poses=poses)
         self.publisher_detections.publish(pose_array)
-        #self.get_logger().info("Published")
+        self.get_logger().info(f"Person IDs: {person_ids}")
 
     def find_same_person(self, features):
         found_same_person = False
@@ -334,7 +336,7 @@ class PersonDetector(Node):
         camera_position_vector = np.array([camera_x,
                           camera_y,
                           camera_z])
-        self.get_logger().info(f"Position in camera coords: {camera_position_vector}")
+        #self.get_logger().info(f"Position in camera coords: {camera_position_vector}")
 
         if frame == ImageToFrameEnum.CAMERA_FRAME:
             point = Point()
@@ -353,7 +355,7 @@ class PersonDetector(Node):
         time_nanoseconds = time_frac % 1e9
         new_stamp = Time(seconds=time_secs, nanoseconds=time_nanoseconds)
         new_stamp = new_stamp.to_msg()
-        self.get_logger().info(f"old stamp: {stamp}, new stamp: {new_stamp}")
+        #self.get_logger().info(f"old stamp: {stamp}, new stamp: {new_stamp}")
         if frame == ImageToFrameEnum.ROBOT_FRAME:
             first_link = "base_link"
         elif frame == ImageToFrameEnum.MAP_FRAME:
@@ -378,7 +380,7 @@ class PersonDetector(Node):
             self.get_logger().error(f"Timeout waiting for transform: {self.last_error}")
             return None
 
-        self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[center_y, center_x]}")
+        #self.get_logger().info(f"Depth shape: {self.depth_image.shape}, point checked: {self.depth_image[center_y, center_x]}")
 
         # Rotation and translation
         R = self.quaternion_to_rotation_matrix(transform)
@@ -388,7 +390,7 @@ class PersonDetector(Node):
 
         # We transform it to robot/map frame
         map_point = np.dot(R, camera_position_vector) + T
-        self.get_logger().info(f"Map point: {map_point}")
+        #self.get_logger().info(f"Map point: {map_point}")
         pose = Pose()
         pose.position.x = map_point[0]
         pose.position.y = map_point[1]
@@ -421,7 +423,7 @@ class PersonDetector(Node):
 
     def is_person_to_track(self, x, y): # x, y in robot_frame
         angle = np.arctan2(y, x)
-        self.get_logger().info(f"Angle: {angle}, x: {x}")
+        #self.get_logger().info(f"Angle: {angle}, x: {x}")
         return x < 3 and np.abs(angle) < 0.3491
 
     def read_depth(self, depth_image, bbox):

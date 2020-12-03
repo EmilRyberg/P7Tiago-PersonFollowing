@@ -40,7 +40,7 @@ namespace tiago_person_following
   BT::NodeStatus ResetKalmanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Reset kalman");
-    return BT::NodeStatus::FAILURE;
+    return BT::NodeStatus::SUCCESS;
   }
 
   //code that runs when the actions server returns a cancelled result
@@ -58,7 +58,7 @@ BT_REGISTER_NODES(factory)
     [](const std::string & name, const BT::NodeConfiguration & config)
     {
       return std::make_unique<tiago_person_following::ResetKalmanAction>(
-        name, "reset_kalman", config);
+        name, "find_human", config);
     };
 
   factory.registerBuilder<tiago_person_following::ResetKalmanAction>(

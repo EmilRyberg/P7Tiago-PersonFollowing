@@ -19,7 +19,6 @@ class KalmanTracking(Node):
     def __init__(self):
         super().__init__('kalman_action_server')
         self.filters: Dict[int, KfTracker] = {}
-        self.current_person_id = 0
         self.should_track_id = -1
         self.tracked_id = -1
         self.last_sent_head_movement = time.time()
@@ -49,7 +48,7 @@ class KalmanTracking(Node):
                 map_position = np.array([[measurement_item.pose.pose.position.x],
                                          [measurement_item.pose.pose.position.y]])
 
-                last_position, last_time = self.person_last_positions[i]
+                last_position, last_time = self.person_last_positions[person_id]
                 delta_time = ttime - last_time
                 x_diff = map_position[0, 0] - last_position[0, 0]
                 y_diff = map_position[1, 0] - last_position[1, 0]
@@ -71,10 +70,8 @@ class KalmanTracking(Node):
             # Getting the measured position into the right format
             map_position = np.array([[new_person.pose.pose.position.x],
                                      [new_person.pose.pose.position.y]])
-            self.person_last_positions[self.current_person_id] = (map_position, ttime)
-
-            self.filters[self.current_person_id] = KfTracker(map_position, ttime)
-            self.current_person_id += 1
+            self.person_last_positions[new_person.person_id] = (map_position, ttime)
+            self.filters[new_person.person_id] = KfTracker(map_position, ttime)
 
         #### move camera
         current_time = time.time()
@@ -110,10 +107,12 @@ class KalmanTracking(Node):
         result = Kalman.Result()  # Creating result message
 
         if id == -1:
+            if self.should_track_id == -1:
+                return result
             id = self.should_track_id
         self.tracked_id = id
 
-        if id not in self.filters.keys():
+        if id not in self.filters.keys() and id != -1:
             self.get_logger().warn(f"Got id {id}, which does not exist")
             return result
 
@@ -124,21 +123,20 @@ class KalmanTracking(Node):
 
         header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
         map_pose = Pose()
-        if self.current_person_id != 0:  # Making sure atleast one kalman filter is running before indexing
-            self.get_logger().info(f"Sending goal: {self.filters[id].x[0, 0]} - {self.filters[id].x[1, 0]} - "
-                                   f"is_tracked: {self.filters[id].is_tracked}")
-            map_pose.position.x = self.filters[id].x[0, 0]
-            map_pose.position.y = self.filters[id].x[1, 0]
-            map_pose.position.z = 0.0
+        self.get_logger().info(f"Sending goal: {self.filters[id].x[0, 0]} - {self.filters[id].x[1, 0]} - "
+                               f"is_tracked: {self.filters[id].is_tracked}")
+        map_pose.position.x = self.filters[id].x[0, 0]
+        map_pose.position.y = self.filters[id].x[1, 0]
+        map_pose.position.z = 0.0
 
-            orientation = self.get_orientation(self.filters[id].x[2, 0], self.filters[id].x[3, 0])
+        orientation = self.get_orientation(self.filters[id].x[2, 0], self.filters[id].x[3, 0])
 
-            map_pose.orientation.x = orientation[0]
-            map_pose.orientation.y = orientation[1]
-            map_pose.orientation.z = orientation[2]
-            map_pose.orientation.w = orientation[3]
-            result.pose = PoseStamped(header=header, pose=map_pose)
-            result.is_tracked = self.filters[id].is_tracked
+        map_pose.orientation.x = orientation[0]
+        map_pose.orientation.y = orientation[1]
+        map_pose.orientation.z = orientation[2]
+        map_pose.orientation.w = orientation[3]
+        result.pose = PoseStamped(header=header, pose=map_pose)
+        result.is_tracked = self.filters[id].is_tracked
 
         # map_pose = Pose()
         # map_pose.position.x = -0.84

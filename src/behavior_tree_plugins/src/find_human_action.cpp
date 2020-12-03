@@ -78,6 +78,7 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
     setOutput("found", false);
+    has_sent_goal = false;
     return BT::NodeStatus::FAILURE;
   }
 
@@ -86,6 +87,7 @@ namespace tiago_person_following
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
     setOutput("found", false);
+    has_sent_goal = false;
     return BT::NodeStatus::FAILURE;
   }
 }
