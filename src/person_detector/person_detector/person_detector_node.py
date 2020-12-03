@@ -409,8 +409,8 @@ class PersonDetector(Node):
         return x < 3 and np.abs(angle) < 0.3491
 
     def read_depth(self, depth_image, bbox):
-        center_x=int((bbox[0]+bbox[2])/2)
-        center_y=int((bbox[1]+bbox[3])/2)
+        center_x = int((bbox[0]+bbox[2])/2)
+        center_y = int((bbox[1]+bbox[3])/2)
         x = center_x - 10
         y = center_y - 10
         x_end = center_x + 10
