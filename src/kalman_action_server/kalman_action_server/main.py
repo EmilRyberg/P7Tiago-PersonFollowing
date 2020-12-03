@@ -8,7 +8,7 @@ import numpy as np
 import math
 from scipy.spatial.transform import Rotation
 import time
-from geometry_msgs.msg import Point, Pose, PoseStamped
+from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray
 from std_msgs.msg import Header
 from typing import List, Tuple
 
@@ -31,6 +31,7 @@ class KalmanTracking(Node):
         self.last_time = time.time()
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
+        self.visualization_publisher = self.create_publisher(PoseArray, "/detections_filtered", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
         self.person_last_positions: List[Tuple[np.ndarray, float]] = []
 
@@ -103,6 +104,23 @@ class KalmanTracking(Node):
                 self.get_logger().info(f"tracked person: {tracked_person}")
                 if tracked_person is not None:
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
+
+        poses = []
+        for filter in self.kf:
+            pose = Pose()
+            pose.position.x = filter.x[0, 0]
+            pose.position.y = filter.x[1, 0]
+            pose.position.z = 0.0
+            #self.get_logger().info(f"velocities x={filter.x[2, 0]} y={filter.x[3, 0]}")
+            orientation = self.get_orientation(filter.x[2, 0], filter.x[3, 0])
+            pose.orientation.x = orientation[0]
+            pose.orientation.y = orientation[1]
+            pose.orientation.z = orientation[2]
+            pose.orientation.w = orientation[3]
+            poses.append(pose)
+        header = Header(stamp=self.get_clock().now().to_msg(), frame_id="map")
+        pose_array = PoseArray(header=header, poses=poses)
+        self.visualization_publisher.publish(pose_array)
 
     def action_cb(self, cb_handle):
         id = cb_handle.request.id

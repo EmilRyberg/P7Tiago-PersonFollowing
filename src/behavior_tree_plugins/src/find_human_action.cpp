@@ -17,12 +17,12 @@ namespace tiago_person_following
     const BT::NodeConfiguration & config)
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
-    RCLCPP_INFO(node_->get_logger(), "abc");
-        getInput("target_id", look_for_id); //i.e. dont look for a specific ID, but look and track a human and return with the ID
+    //getInput("target_id", look_for_id); //i.e. dont look for a specific ID, but look and track a human and return with the ID
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
+    getInput("target_id", look_for_id);
     RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
     goal_.id = look_for_id;  //and this should send the ID to the action server 
   }  
@@ -51,19 +51,19 @@ namespace tiago_person_following
       setOutput("got_initial_goal_output", true);
       return BT::NodeStatus::SUCCESS;
     } 
-    else if(person_id != look_for_id)  //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
-    {
-      RCLCPP_INFO(node_->get_logger(), "Could not find same person");
-      setOutput("found", false);
-      return BT::NodeStatus::FAILURE;
-    }
-    else //should only run when the requested ID is the ID we recieve
+    else if(result_.result->is_tracked)  //should only run when the requested ID is the ID we recieve 
     {
       RCLCPP_INFO(node_->get_logger(), "Action success: Found same person");
       setOutput("person_info", result_.result->pose);
       setOutput("goal", result_.result->pose);
       setOutput("found", true);
       return BT::NodeStatus::SUCCESS;
+    }
+    else //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
+    {
+      RCLCPP_INFO(node_->get_logger(), "Could not find same person");
+      setOutput("found", false);
+      return BT::NodeStatus::FAILURE;
     }
   }
 
