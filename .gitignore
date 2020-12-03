@@ -19,3 +19,4 @@ src/feature_extractor/runs/
 .idea/
 
 venv
+image saving/
