@@ -85,7 +85,7 @@ bt_navigator:
     - nav2_time_expired_condition_bt_node
     - nav2_distance_traveled_condition_bt_node
     - find_human_action
-    - find_same_human_action
+    - reset_kalman_action
     - has_moved_condition
     - is_human_found_condition
     - is_first_run_condition

@@ -79,6 +79,7 @@
 								</ReactiveFallback>
 							</RecoveryNode>
 							<SetBlackboard output_key="moved_flag" value="true" />
+							<ResetKalman ID="resetKalman" />>
 						</Sequence>
 					</Fallback>
 					<Fallback>
