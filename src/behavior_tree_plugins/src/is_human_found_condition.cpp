@@ -25,10 +25,12 @@ namespace tiago_person_following
 
     if(is_human_found_)
     {
+      std::cerr << "humanFoundCondition: True" << std::endl;
       return BT::NodeStatus::SUCCESS;
     }
     else
     {
+      std::cerr << "humanFoundCondition: False" << std::endl;
       return BT::NodeStatus::FAILURE;
     }
   }
