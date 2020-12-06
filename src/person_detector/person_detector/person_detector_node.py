@@ -65,6 +65,7 @@ class PersonDetector(Node):
 
         self.publisher_ = self.create_publisher(PersonInfoList, "/persons", 1)
         self.publisher_detections = self.create_publisher(PoseArray, "/persons_raw", 1)
+        self.publisher_image_with_info = self.create_publisher(Image, "/image_with_info", 1)
         self.get_logger().info("Loading weights")
         self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
         self.person_finder = PersonFinder(yolo_weights_path, on_gpu=True)
@@ -211,6 +212,7 @@ class PersonDetector(Node):
             person_ids.append(person.person_id)
         pose_array = PoseArray(header=header, poses=poses)
         self.publisher_detections.publish(pose_array)
+        self.draw_and_publish_image_with_info(self.image, person_detections, person_ids, id_to_track)
         self.get_logger().info(f"Person IDs: {person_ids}")
 
     def find_same_person(self, features):
@@ -451,8 +453,24 @@ class PersonDetector(Node):
         average_depth = dist / count
         return median_depth
 
-    def calculate_delay(self, stamp_new, stamp_old):
-        return (stamp_new.sec + stamp_new.nanosec/1e9) - (stamp_old.sec + stamp_old.nanosec/1e9)
+    def draw_and_publish_image_with_info(self, img, bounding_boxes, id_list, tracked_id):
+        img_copy = np.copy(img)
+        font = cv2.FONT_HERSHEY_DUPLEX
+        for i, bounding_box in enumerate(bounding_boxes):
+            if id_list[i] == tracked_id:
+                color = (0,255,0)
+                thickness = 2
+            else:
+                color = (255,0,0)
+                thickness = 1
+            center_x = int((bounding_box[0] + bounding_box[2]) / 2)
+            center_y = int((bounding_box[1] + bounding_box[3]) / 2)
+            cv2.rectangle(img_copy, (bounding_box[0], bounding_box[2]), (bounding_box[1], bounding_box[3]), color, thickness)
+            cv2.rectangle(img_copy, (center_x-10, center_y-10), (center_x+10, center_y+10), color, 1)
+            cv2.putText(img_copy, f"id: {id_list[i]}", (bounding_box[0], bounding_box[1]), font, 0.7, color, thickness)
+        image_msg = self.cv_bridge.cv2_to_imgmsg(img_copy, encoding="passthrough")
+        self.publisher_image_with_info.publish(image_msg)
+
 
 
 class TfListener(Node):
