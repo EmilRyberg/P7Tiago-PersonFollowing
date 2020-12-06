@@ -6,12 +6,12 @@ import numpy as np
 
 
 class FeatureExtractorNet(nn.Module):
-    def __init__(self, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=12):
+    def __init__(self, bottleneck_input_size=1280 * 11 * 4, use_classifier=False, num_classes=34):
         super(FeatureExtractorNet, self).__init__()
         mn = mobilenet_v2(False)
         self.backbone = mn.features
-        self.bottleneck = nn.Linear(bottleneck_input_size, 6)
-        self.classifier = nn.Linear(6, num_classes)
+        self.bottleneck = nn.Linear(bottleneck_input_size, 8)
+        self.classifier = nn.Linear(8, num_classes)
         self.use_classifier = use_classifier
 
     def forward(self, x):

@@ -34,7 +34,7 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     # writer.add_graph(model, example_input)
     for param in model.backbone.parameters():
         param.requires_grad = False
-    criterion = nn.TripletMarginLoss(margin=0.2)
+    criterion = nn.TripletMarginLoss(margin=0.3)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.25, weight_decay=0.001, momentum=0.9)
 
     #print(f"Training with {train_length} train images, and {test_length} test images")
