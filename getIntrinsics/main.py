@@ -14,7 +14,7 @@ def get_calibration_matrix(calibrationSquareDimension, width, height):    #sqaur
     # Arrays to store object points and image points from all the images.
     objpoints = [] # 3d point in real world space
     imgpoints = [] # 2d points in image plane.
-    images = glob.glob('*.jpg')
+    images = glob.glob('*.png')
 
     for filename in images:
         img = cv.imread(filename)
@@ -29,14 +29,13 @@ def get_calibration_matrix(calibrationSquareDimension, width, height):    #sqaur
             imgpoints.append(corners)
             # Draw and display the corners
             cv.drawChessboardCorners(img, (height,width), corners2, ret)
-            #cv.imshow('img', img)
-            #cv.waitKey(0)
+            cv.imshow('img', img)
+            cv.waitKey(0)
         else: print("didn't find corners on:", filename)
     cv.destroyAllWindows()
     ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
     print(mtx)
-    print(rvecs)
-    print(tvecs)
+    print(dist)
 
 if __name__ == "__main__":
-    get_calibration_matrix(0.0205, 6, 8)
+    get_calibration_matrix(0.017, 6, 8)
