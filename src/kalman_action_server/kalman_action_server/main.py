@@ -8,7 +8,7 @@ import numpy as np
 import math
 from scipy.spatial.transform import Rotation
 import time
-from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray
+from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray, Vector3
 from std_msgs.msg import Header
 from typing import List, Tuple, Dict
 
@@ -20,14 +20,16 @@ class KalmanTracking(Node):
         super().__init__('kalman_action_server')
         self.filters: Dict[int, KfTracker] = {}
         self.should_track_id = -1
-        self.tracked_id = -1
+        self.tracked_id = 0#-1
         self.last_sent_head_movement = time.time()
         self.last_time = time.time()
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.visualization_publisher = self.create_publisher(PoseArray, "/detections_filtered", 1)
+        self.head_move_publisher = self.create_publisher(Vector3, "/head_move", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
         self.person_last_positions: Dict[int, Tuple[np.ndarray, float]] = {}
+        self.head_angle = 0
 
     def detection_cb(self, msg: PersonInfoList):
         ttime = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
@@ -165,13 +167,14 @@ class KalmanTracking(Node):
         return rotation.as_quat()
 
     def move_head(self, x, y, min_duration=0.5):
-        msg = BridgeAction()
-        msg.x = x
-        msg.y = y
-        msg.min_duration = min_duration
-        msg.max_velocity = 25.
-
-        self.head_pub.publish(msg)
+        center_x = x
+        self.get_logger().warn(f"center_x {center_x}")
+        center_x -= (640 / 2)  # offset center to be zero
+        center_x *= -1  # flip direction
+        self.head_angle += center_x * (1 / 320) * 0.45
+        self.get_logger().warn(f"head_angle {self.head_angle}")
+        msg = Vector3(x=self.head_angle, y=0.0)
+        self.head_move_publisher.publish(msg)
 
 
 def main():
