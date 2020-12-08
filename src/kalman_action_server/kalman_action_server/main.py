@@ -11,9 +11,18 @@ import time
 from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray, Vector3
 from std_msgs.msg import Header
 from typing import List, Tuple, Dict
+import csv
 
 VELOCITY_NORM_THRESHOLD = 2  # m/s. 2 m/s -> 7.2 km/h
 
+test3_csv = open('test3.csv', mode='w')
+fieldnames = ['time', 'angle', 'tracked']
+writer = csv.DictWriter(test3_csv, fieldnames=fieldnames)
+writer.writeheader()
+
+def log_for_test3(time, angle, tracked):
+    global writer
+    writer.writerow({'time': time, 'angle': angle, 'tracked': tracked})
 
 class KalmanTracking(Node):
     def __init__(self):
@@ -84,6 +93,12 @@ class KalmanTracking(Node):
                 self.get_logger().info(f"tracked person: {tracked_person}")
                 if tracked_person is not None:
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
+
+        tracked_person_temp = next((x for x in persons if x.person_id == self.tracked_id), None)
+        if self.tracked_id != -1 and tracked_person_temp is not None:
+            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 1)
+        else:
+            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 0)
 
         poses = []
         for kf_filter in self.filters.values():
