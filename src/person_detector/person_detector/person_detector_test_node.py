@@ -33,8 +33,8 @@ class PersonDetectorTest(Node):
                                                          "/compressed_images",
                                                          self.image_callback,
                                                          qos_profile)
-        self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
-        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=on_gpu)
+        self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=True)
+        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=True)
         self.cv_bridge = CvBridge()
         self.image = None
         self.depth_image = None
@@ -53,6 +53,10 @@ class PersonDetectorTest(Node):
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.image_stamp = msg.header.stamp
         self.image_is_updated = True
+        time_now = self.get_clock().now().to_msg()
+        if (time_now.sec + time_now.nanosec/1e9) - (self.image_stamp.sec + self.image_stamp.nanosec/1e9) > 0.1:
+            self.get_logger().warn("image too old, discarding")
+            return
         self.got_image_callback()
 
     def got_image_callback(self):
@@ -66,6 +70,7 @@ class PersonDetectorTest(Node):
             for i, (pid, emb) in enumerate(self.person_features_mapping):
                 distance = embedding_distance(features, emb)
                 self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+                #self.get_logger().info(f"Emb {pid}: {emb}")
                 # print(f"Distance: {distance}")
                 is_below_threshold = is_same_person(features, emb, threshold=0.8)
                 if is_below_threshold:
