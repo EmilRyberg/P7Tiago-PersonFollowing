@@ -27,8 +27,8 @@ HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
-UNCONFIRMED_COUNT_THRESHOLD = 3
-UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
+UNCONFIRMED_COUNT_THRESHOLD = 12
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 20  # secs
 F_X = 530.674
 F_Y = 531.818
 C_X = 315.459
@@ -222,7 +222,7 @@ class PersonDetector(Node):
             distance = embedding_distance(features, emb)
             # self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
             # print(f"Distance: {distance}")
-            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            is_below_threshold = is_same_person(features, emb, threshold=0.8)
             if is_below_threshold:
                 found_same_person = True
                 distances.append(distance)
@@ -231,7 +231,7 @@ class PersonDetector(Node):
             best_match = self.find_best_match(features_below_threshold, distances)
             best_person_id, best_index = best_match
             current_person_id, current_features = self.person_features_mapping[best_index]
-            new_emb = current_features * 0.8 + features * 0.2
+            new_emb = current_features * 0.9 + features * 0.10
             self.person_features_mapping[best_index] = (best_person_id, new_emb)
             person_id = best_person_id
 
@@ -250,29 +250,32 @@ class PersonDetector(Node):
                 indices_to_remove.append(i)
                 continue
             distance = embedding_distance(features, emb)
-            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            is_below_threshold = is_same_person(features, emb, threshold=0.8)
             # self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
             if is_below_threshold:
                 distances.append(distance)
                 unconfirmed_below_threshold.append((i, emb, times_found, time_last_seen))
         best_match = self.find_best_match(unconfirmed_below_threshold, distances)
         if best_match is not None:
-            best_index, emb, times_found, time_last_seen = best_match
-            avg_emb = (features + emb) / 2
+            best_index, all_features, times_found, time_last_seen = best_match
+            all_features.append(features)
+            #avg_emb = (features + emb) / 2
             new_times_found = times_found + 1
             if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
+                all_features_np = np.array(all_features).reshape((-1, 8))
                 indices_to_remove.append(best_index)
-                self.person_features_mapping.append((self.person_id, avg_emb))
+                median_embedding = np.median(all_features_np, axis=0)
+                self.person_features_mapping.append((self.person_id, median_embedding))
                 person_id = self.person_id
                 self.person_id += 1
             found_same_unconfirmed_person = True
-            self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
+            self.unconfirmed_persons[best_index] = (all_features, new_times_found, time_now)
         if len(indices_to_remove) > 0:
             self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
                                         i not in indices_to_remove]
             # self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
         if not found_same_unconfirmed_person:
-            self.unconfirmed_persons.append((features, 0, time_now))
+            self.unconfirmed_persons.append(([features], 0, time_now))
 
         return person_id
 
