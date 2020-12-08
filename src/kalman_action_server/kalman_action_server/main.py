@@ -11,6 +11,7 @@ import time
 from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray, Vector3
 from std_msgs.msg import Header
 from typing import List, Tuple, Dict
+import csv
 
 VELOCITY_NORM_THRESHOLD = 2  # m/s. 2 m/s -> 7.2 km/h
 
