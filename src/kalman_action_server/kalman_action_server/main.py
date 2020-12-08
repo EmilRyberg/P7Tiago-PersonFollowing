@@ -12,6 +12,15 @@ from std_msgs.msg import Header
 def sort_obj_based_on_id(obj):
     return obj.person_id
 
+test3_csv = open('test3.csv', mode='w')
+fieldnames = ['time', 'angle', 'tracked']
+writer = csv.DictWriter(test3_csv, fieldnames=fieldnames)
+writer.writeheader()
+
+def log_for_test3(time, angle, tracked):
+    global writer
+    writer.writerow({'time': time, 'angle': angle, 'tracked': tracked})
+
 class KalmanTracking(Node):
 
     def __init__(self):
@@ -76,6 +85,9 @@ class KalmanTracking(Node):
             tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
             if tracked_person is not None:
                 self.move_head(tracked_person.horizontal_angle)
+                log_for_test3(time, tracked_person.horizontal_angle, 1)
+            else:
+                log_for_test3(time, np.nan, 0)
 
 
     def action_cb(self, cb_handle):
