@@ -27,7 +27,7 @@ HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
-UNCONFIRMED_COUNT_THRESHOLD = 12
+UNCONFIRMED_COUNT_THRESHOLD = 8
 UNCONFIRMED_TIME_THRESHOLD_SECONDS = 20  # secs
 F_X = 530.674
 F_Y = 531.818
@@ -269,8 +269,8 @@ class PersonDetector(Node):
             if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
                 all_features_np = np.array(all_features).reshape((-1, 8))
                 indices_to_remove.append(best_index)
-                median_embedding = np.median(all_features_np, axis=0)
-                self.person_features_mapping.append((self.person_id, median_embedding))
+                mean_embedding = np.mean(all_features_np, axis=0)
+                self.person_features_mapping.append((self.person_id, mean_embedding))
                 person_id = self.person_id
                 self.person_id += 1
             found_same_unconfirmed_person = True

@@ -11,8 +11,8 @@ from person_detector.person_finder.person_finder import PersonFinder
 from person_detector.feature_extractor.utils import plot_person_detections
 import numpy as np
 
-UNCONFIRMED_COUNT_THRESHOLD = 15
-UNCONFIRMED_TIME_THRESHOLD_SECONDS = 30  # secs
+UNCONFIRMED_COUNT_THRESHOLD = 8
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 20  # secs
 
 
 class PersonDetectorTest(Node):
@@ -72,7 +72,7 @@ class PersonDetectorTest(Node):
                 self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
                 #self.get_logger().info(f"Emb {pid}: {emb}")
                 # print(f"Distance: {distance}")
-                is_below_threshold = is_same_person(features, emb, threshold=0.8)
+                is_below_threshold = is_same_person(features, emb, threshold=0.7)
                 if is_below_threshold:
                     found_same_person = True
                     features_below_threshold.append((pid, distance, person_detection, i))
@@ -104,7 +104,7 @@ class PersonDetectorTest(Node):
                         indices_to_remove.append(i)
                         continue
                     distance = embedding_distance(features, emb)
-                    is_below_threshold = is_same_person(features, emb, threshold=0.8)
+                    is_below_threshold = is_same_person(features, emb, threshold=0.7)
                     #self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
                     if is_below_threshold:
                         unconfirmed_below_threshold.append((i, distance, (emb, times_found, time_last_seen)))
@@ -122,8 +122,8 @@ class PersonDetectorTest(Node):
                     if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
                         indices_to_remove.append(best_index)
                         all_features_np = np.array(all_features).reshape((-1, 8))
-                        median_embeddings = np.median(all_features_np, axis=0)
-                        self.person_features_mapping.append((self.person_id, median_embeddings))
+                        mean_embeddings = np.mean(all_features_np, axis=0)
+                        self.person_features_mapping.append((self.person_id, mean_embeddings))
                         person_detection_mapping.append((person_detection, self.person_id))
                         self.person_id += 1
                     found_same_unconfirmed_person = True
