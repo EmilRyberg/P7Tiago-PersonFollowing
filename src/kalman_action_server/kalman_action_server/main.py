@@ -15,7 +15,7 @@ import csv
 
 VELOCITY_NORM_THRESHOLD = 2  # m/s. 2 m/s -> 7.2 km/h
 
-test3_csv = open('test3.csv', mode='w')
+test3_csv = open('test2.csv', mode='w')
 fieldnames = ['time', 'angle', 'tracked']
 writer = csv.DictWriter(test3_csv, fieldnames=fieldnames)
 writer.writeheader()
@@ -29,7 +29,7 @@ class KalmanTracking(Node):
         super().__init__('kalman_action_server')
         self.filters: Dict[int, KfTracker] = {}
         self.should_track_id = -1
-        self.tracked_id = 0#-1
+        self.tracked_id = -1
         self.last_sent_head_movement = time.time()
         self.last_time = time.time()
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
@@ -86,7 +86,7 @@ class KalmanTracking(Node):
 
         #### move camera
         current_time = time.time()
-        if current_time - self.last_sent_head_movement > 1.5:
+        if current_time - self.last_sent_head_movement > 0.3:
             self.last_sent_head_movement = current_time
             if self.tracked_id != -1:
                 tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
@@ -98,7 +98,7 @@ class KalmanTracking(Node):
         if self.tracked_id != -1 and tracked_person_temp is not None:
             log_for_test3(ttime, tracked_person_temp.horizontal_angle, 1)
         else:
-            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 0)
+            log_for_test3(ttime, -9000, 0)
 
         poses = []
         for kf_filter in self.filters.values():
