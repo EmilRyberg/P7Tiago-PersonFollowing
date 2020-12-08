@@ -91,6 +91,12 @@ class KalmanTracking(Node):
                 if tracked_person is not None:
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
 
+        tracked_person_temp = next((x for x in persons if x.person_id == self.tracked_id), None)
+        if self.tracked_id != -1 and tracked_person_temp is not None:
+            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 1)
+        else:
+            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 0)
+
         poses = []
         for kf_filter in self.filters.values():
             pose = Pose()
