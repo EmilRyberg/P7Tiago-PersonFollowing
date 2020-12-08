@@ -3,22 +3,8 @@ from numpy import dot, zeros, eye
 
 np.set_printoptions(suppress=True)
 
-# Must do track() before adding new filters! 
+
 class KfTracker:
-    # Variables related to the state
-    x = np.array([[0.], [0.], [0.], [0.]])
-    P = np.eye(4) * 1000.
-    isTracked = True
-
-    # Time last batch of measurements were received
-    prevTime = 0
-    
-    # The dynamics matrix. [0, 2] and [1, 3] will be replaced by dt (sampling period)
-    F = np.array([[1., 0., 1., 0.],
-                  [0., 1., 0., 1.],
-                  [0., 0., 1., 0.],
-                  [0., 0., 0., 1.]])
-
     # The measurement matrix
     H = np.array([[1., 0., 0., 0.],
                   [0., 1., 0., 0.]])
@@ -28,20 +14,24 @@ class KfTracker:
 
     # Used for adding the noise variances
     r = 5.
-    q = 0
+    q = 1
     R = np.eye(2) * r
     Q_base = _I * q
 
-    def __init__(self, mPos, timeStamp): 
-        self.prevTime = timeStamp
-
-        self.x = np.array([[mPos[0]], [mPos[1]], [0.], [0.]])
+    def __init__(self, map_position, time_stamp):
+        self.prev_time = time_stamp
+        self.is_tracked = True
+        self.x = np.array([[map_position[0, 0]], [map_position[1, 0]], [0.], [0.]])
         self.P = np.eye(4) * 1000.
+        # The dynamics matrix. [0, 2] and [1, 3] will be replaced by dt (sampling period)
+        self.F = np.array([[1., 0., 1., 0.],
+                      [0., 1., 0., 1.],
+                      [0., 0., 1., 0.],
+                      [0., 0., 0., 1.]])
 
-
-    def predict(self, timeStamp):
-        dt = timeStamp - self.prevTime
-        self.prevTime = timeStamp
+    def predict(self, time_stamp):
+        dt = time_stamp - self.prev_time
+        self.prev_time = time_stamp
         self.F[0, 2] = dt
         self.F[1, 3] = dt
 
@@ -52,7 +42,6 @@ class KfTracker:
 
         # P = FPF' + Q
         self.P = dot(dot(self.F, self.P), self.F.T) + Q
-
 
     def update(self, z):
         # y = z - Hx

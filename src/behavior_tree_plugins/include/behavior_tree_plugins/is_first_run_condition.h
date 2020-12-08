@@ -22,6 +22,8 @@ namespace tiago_person_following
         BT::OutputPort<bool>("found"),
         BT::OutputPort<bool>("moved_flag"),
         BT::OutputPort<int32_t>("current_id"),
+        BT::OutputPort<bool>("got_initial_goal_output"),
+        BT::InputPort<bool>("got_initial_goal_input"),
         BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info")
        };
     }
@@ -31,6 +33,7 @@ namespace tiago_person_following
 
     private:
       bool is_first_run_ = false;
+      bool got_initial_goal_ = false;
       bool first_run_var_ = true;
   };
 }

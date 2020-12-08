@@ -35,17 +35,18 @@ namespace tiago_person_following
         static BT::PortsList providedPorts()
         {
             return providedBasicPorts(
-            {
+            {   
+                BT::InputPort<int32_t>("target_id"),
                 BT::OutputPort<int32_t>("current_id"),
                 BT::OutputPort<bool>("found"),
-                BT::OutputPort<geometry_msgs::msg::PoseStamped>("person_info"),
-                BT::OutputPort<bool>("first_run_flag"),
+                BT::OutputPort<bool>("got_initial_goal_output"),
                 BT::OutputPort<geometry_msgs::msg::PoseStamped>("goal")
             });
         }
 
         // prolly this this part wrong because i am a dumbass
         private:
+        bool has_sent_goal;
         int32_t look_for_id;
         int32_t person_id;
         geometry_msgs::msg::PoseStamped pose;

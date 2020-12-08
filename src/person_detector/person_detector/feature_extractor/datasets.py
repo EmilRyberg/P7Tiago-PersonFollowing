@@ -11,38 +11,44 @@ import cv2 as cv
 
 class ClassificationDataset(Dataset):
     def __init__(self, dataset_dir, image_size=(336, 120), data_transform=None):
-        self.image_folders = glob(dataset_dir + "/*/")
+        self.super_class_folders = glob(dataset_dir + "/*/")
         self.images_with_class = []
         self.data_transform = data_transform
         self.image_size = image_size
+        super_class_id = 0
         class_id = 0
-        for folder in self.image_folders:
-            png_paths = glob(f"{folder}*.png")
-            jpg_paths = glob(f"{folder}*.jpg")
-            all_images = []
-            all_images.extend(png_paths)
-            all_images.extend(jpg_paths)
-            for img_path in all_images:
-                self.images_with_class.append((img_path, class_id))
-            class_id += 1
+        for super_folder in self.super_class_folders:
+            sub_folders = glob(super_folder + "/*/")
+            #print(f"sub-folders: {sub_folders}")
+            for folder in sub_folders:
+                png_paths = glob(f"{folder}*.png")
+                jpg_paths = glob(f"{folder}*.jpg")
+                all_images = []
+                all_images.extend(png_paths)
+                all_images.extend(jpg_paths)
+                for img_path in all_images:
+                    self.images_with_class.append((img_path, super_class_id, class_id))
+                    #print(f"image in dataset: {self.images_with_class[-1]}")
+                class_id += 1
+            super_class_id += 1
 
     def __len__(self):
         return len(self.images_with_class)
 
     def __getitem__(self, idx):
-        img_path, class_id = self.images_with_class[idx]
+        img_path, super_class_id, class_id = self.images_with_class[idx]
         image = Image.open(img_path)
         if self.data_transform:
             image = self.data_transform(image)
         else:
             image = transforms.ToTensor()(image)
         image = F.interpolate(image.unsqueeze(0), self.image_size).squeeze(0)
-        return image, class_id
+        return image, super_class_id, class_id
 
 
 class TripletDataset(Dataset):
     def __init__(self, dataset_dir, images_per_class=200, image_size=(336, 120), data_transform=None):
-        self.image_folders = glob(dataset_dir + "/*/")
+        self.super_class_folders = glob(dataset_dir + "/*/")
         self.images_grouped_by_class = []
         self.flattened_class_with_images = []
         self.images_per_class = images_per_class
@@ -50,17 +56,19 @@ class TripletDataset(Dataset):
         self.data_transform = data_transform
         self.triplets = []
         class_id = 0
-        self.num_classes = len(self.image_folders)
-        for folder in self.image_folders:
-            png_paths = glob(f"{folder}*.png")
-            jpg_paths = glob(f"{folder}*.jpg")
-            all_images = []
-            all_images.extend(png_paths)
-            all_images.extend(jpg_paths)
-            for img_path in all_images:
-                self.flattened_class_with_images.append((img_path, class_id))
-            self.images_grouped_by_class.append((class_id, all_images))
+        for super_folder in self.super_class_folders:
+            sub_folders = glob(super_folder + "/*/")
+            for folder in sub_folders:
+                png_paths = glob(f"{folder}*.png")
+                jpg_paths = glob(f"{folder}*.jpg")
+                all_images = []
+                all_images.extend(png_paths)
+                all_images.extend(jpg_paths)
+                for img_path in all_images:
+                    self.flattened_class_with_images.append((img_path, class_id))
+                self.images_grouped_by_class.append((class_id, all_images))
             class_id += 1
+        self.num_classes = len(self.super_class_folders)
         self.sample_triplets()
 
     def sample_triplets(self):

@@ -5,21 +5,18 @@
 		<Repeat num_cycles="9999999">
 			<Fallback>
 				<Sequence>
-					<SetBlackboard output_key="server_timeout" value="10000" />
-					<IsFirstRun name="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" got_initial_goal_output="{got_initial_goal_output}" got_initial_goal_input="{got_initial_goal_output}" />
-					<FindHuman name="findHuman1" server_timeout="10000" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
+					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" got_initial_goal_output="{got_initial_goal_output}" got_initial_goal_input="{got_initial_goal_output}" />
+					<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
 				</Sequence>
-				<Sequence>
-					<IsHumanFound name="isHumanFound1" found="{found}" />
-					<PipelineSequence>
-						<RateController hz="1.0">
-							<Fallback>
-								<FindHuman name="findHuman2" server_timeout="10000" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
-								<Delay delay_msec="200">
-									<FindHuman name="findHuman3" server_timeout="10000" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
-								</Delay>
-							</Fallback>
-						</RateController>
+				<RateController hz="1.0">
+					<Sequence>
+						<RecoveryNode number_of_retries="10" name="RefindHuman">
+							<Sequence>
+								<IsHumanFound ID="isHumanFound" found="{found}" />
+								<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+							</Sequence>
+							<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+						</RecoveryNode>
 						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
 							<PipelineSequence name="NavigateWithReplanning">
 								<RateController hz="1.0">
@@ -48,24 +45,27 @@
 								</SequenceStar>
 							</ReactiveFallback>
 						</RecoveryNode>
-					</PipelineSequence>
-				</Sequence>
+					</Sequence>
+				</RateController>
 				<Sequence>
 					<Fallback>
-						<HasMoved name="hasMovedToLastPosition" moved_flag="{moved_flag}" />
+						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}" />
 						<Sequence>
 							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
 								<PipelineSequence name="NavigateWithReplanning">
 									<RateController hz="1.0">
 										<RecoveryNode number_of_retries="1" name="ComputePathToPose">
-											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
-												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
-											</GoalUpdater>
+											<Sequence>
+												<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
+													<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
+												</GoalUpdater>
+												<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}" />
+											</Sequence>
 											<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
 										</RecoveryNode>
 									</RateController>
 									<RecoveryNode number_of_retries="1" name="FollowPath">
-										<FollowPath path="{path}" controller_id="FollowPath" />
+										<FollowPath path="{truncated_path}" controller_id="FollowPath" />
 										<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap" />
 									</RecoveryNode>
 								</PipelineSequence>
@@ -80,27 +80,19 @@
 								</ReactiveFallback>
 							</RecoveryNode>
 							<SetBlackboard output_key="moved_flag" value="true" />
-							<ResetKalman name="resetKalman" server_timeout="10000" />
 						</Sequence>
 					</Fallback>
-					<Fallback>
-						<RetryUntilSuccesful num_attempts="20">
-							<Sequence>
-								<Delay delay_msec="300">
-									<Spin spin_dist="0.25" />
-								</Delay>
-								<FindHuman name="findHuman4" server_timeout="10000" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
-								<SetBlackboard output_key="moved_flag" value="false" />
-							</Sequence>
-						</RetryUntilSuccesful>
-						<Sequence>
-							<SetBlackboard output_key="got_initial_goal_output" value="false" />
-							<SetBlackboard output_key="current_id" value="-1" />
-						</Sequence>
-					</Fallback>
+					<RateController hz="0.5">
+						<RecoveryNode number_of_retries="20" name="RefindHuman">
+							<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+							<FindHuman ID="findHuman" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}" />
+						</RecoveryNode>
+					</RateController>
 				</Sequence>
+				<AlwaysSuccess />
 			</Fallback>
 		</Repeat>
 	</BehaviorTree>
+	<!-- ////////// -->
 	<!-- ////////// -->
 </root>

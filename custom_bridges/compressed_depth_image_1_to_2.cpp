@@ -62,13 +62,13 @@ int main(int argc, char * argv[])
   // ROS 2 node and publisher
   //std::cerr <<"init test" << std::endl;
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("compressed_image_1_to_2");
-  pub = node->create_publisher<sensor_msgs::msg::CompressedImage>("/compressed_images", rclcpp::SensorDataQoS());
+  auto node = rclcpp::Node::make_shared("compressed_depth_image_1_to_2");
+  pub = node->create_publisher<sensor_msgs::msg::CompressedImage>("/compressed_depth_images", rclcpp::SensorDataQoS());
 
   // ROS 1 node and subscriber
-  ros::init(argc, argv, "compressed_image_1_to_2");
+  ros::init(argc, argv, "compressed_depth_image_1_to_2");
   ros::NodeHandle n;
-  ros::Subscriber sub = n.subscribe("/xtion/rgb/image_raw/compressed", 1, imageCallback);
+  ros::Subscriber sub = n.subscribe("/xtion/depth_registered/image_raw/compressedDepth", 1, imageCallback);
 
   ros::spin();
 

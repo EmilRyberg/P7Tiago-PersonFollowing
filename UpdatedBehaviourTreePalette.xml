@@ -64,26 +64,30 @@
             <input_port name="wait_duration">Wait time</input_port>
         </Action>
         <Action ID="findHuman">
+            <input_port name="target_id"/>
             <output_port name="current_id"/>
-            <output_port name="first_run_set_flag"/>
+            <output_port name="got_initial_goal_output"/>
             <output_port name="found"/>
             <output_port name="person_info"/>
+            <output_port name="goal"/>
         </Action>
-        <Action ID="findSameHuman">
-            <input_port name="current_id"/>
-            <output_port name="found"/>
-            <output_port name="person_info"/>
+        <Action ID="resetKalman">
         </Action>
         <Condition ID="hasMovedToLastPosition">
             <input_port name="moved_flag"/>
         </Condition>
         <Condition ID="isDone"/>
         <Condition ID="isFirstRun">
-            <input_port default="0" name="first_run_flag"/>
+            <output_port name="current_id"/>
+            <output_port name="found"/>
+            <output_port name="moved_flag"/>
+            <output_port name="current_id"/>
+            <output_port name="person_info"/>
+            <output_port name="got_initial_goal_output"/>
+            <input_port name="got_initial_goal_input"/>
         </Condition>
         <Condition ID="isHumanFound">
             <input_port name="found_flag"/>
         </Condition>
     </TreeNodesModel>
 </root>
-

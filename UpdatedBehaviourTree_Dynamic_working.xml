@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<root main_tree_to_execute="BehaviorTree">
+	<!-- ////////// -->
+	<BehaviorTree ID="BehaviorTree">
+		<Repeat num_cycles="9999999">
+			<Fallback>
+				<Sequence>
+					<IsFirstRun ID="isFirstRun" current_id="{current_id}" found="{found}" moved_flag="{moved_flag}" person_info="{person_info}" got_initial_goal_output="{got_initial_goal_output}" got_initial_goal_input="{got_initial_goal_output}" />
+					<FindHuman ID="findHuman" current_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" person_info="{person_info}" goal="{goal}"/>
+				</Sequence>
+				<RateController hz="1.0">
+					<Sequence>
+						<RecoveryNode number_of_retries="10" name="RefindHuman">
+							<Sequence>
+								<IsHumanFound ID="isHumanFound" found="{found}"/>
+								<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
+							</Sequence>
+							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
+						</RecoveryNode>
+						<RecoveryNode number_of_retries="6" name="NavigateRecovery">
+							<PipelineSequence name="NavigateWithReplanning">
+								<RateController hz="1.0">
+									<RecoveryNode number_of_retries="1" name="ComputePathToPose">
+										<Sequence>
+											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
+												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased"/>
+											</GoalUpdater>
+											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}"/>
+										</Sequence>										
+										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+									</RecoveryNode>
+								</RateController>
+								<RecoveryNode number_of_retries="1" name="FollowPath">
+									<FollowPath path="{truncated_path}" controller_id="FollowPath"/>
+									<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+								</RecoveryNode>
+							</PipelineSequence>
+							<ReactiveFallback name="RecoveryFallback">
+								<GoalUpdated/>
+								<SequenceStar name="RecoveryActions">
+									<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+									<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+									<Spin spin_dist="3.14"/>
+									<Wait wait_duration="5"/>
+								</SequenceStar>
+							</ReactiveFallback>
+						</RecoveryNode>
+					</Sequence>
+				</RateController>
+				<Sequence>
+					<Fallback>
+						<HasMoved ID="hasMovedToLastPosition" moved_flag="{moved_flag}"/>
+						<Sequence>
+							<RecoveryNode number_of_retries="6" name="NavigateRecovery">
+							<PipelineSequence name="NavigateWithReplanning">
+								<RateController hz="1.0">
+									<RecoveryNode number_of_retries="1" name="ComputePathToPose">
+										<Sequence>
+											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
+												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased"/>
+											</GoalUpdater>
+											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}"/>
+										</Sequence>										
+										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap"/>
+									</RecoveryNode>
+								</RateController>
+								<RecoveryNode number_of_retries="1" name="FollowPath">
+									<FollowPath path="{truncated_path}" controller_id="FollowPath"/>
+									<ClearEntireCostmap name="ClearLocalCostmap-Context" service_name="local_costmap/clear_entirely_local_costmap"/>
+								</RecoveryNode>
+							</PipelineSequence>
+							<ReactiveFallback name="RecoveryFallback">
+								<GoalUpdated/>
+								<SequenceStar name="RecoveryActions">
+									<ClearEntireCostmap name="ClearLocalCostmap-Subtree" service_name="local_costmap/clear_entirely_local_costmap"/>
+									<ClearEntireCostmap name="ClearGlobalCostmap-Subtree" service_name="global_costmap/clear_entirely_global_costmap"/>
+									<Spin spin_dist="3.14"/>
+									<Wait wait_duration="5"/>
+								</SequenceStar>
+							</ReactiveFallback>
+						</RecoveryNode>
+							<SetBlackboard output_key="moved_flag" value="true" />
+						</Sequence>
+					</Fallback>
+					<RateController hz="0.5">
+						<RecoveryNode number_of_retries="20" name="RefindHuman">
+							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
+							<FindSameHuman ID="findSameHuman" current_id="{current_id}" found="{found}" person_info="{person_info}" goal="{goal}" />
+						</RecoveryNode>
+					</RateController>
+				</Sequence>
+				<AlwaysSuccess/>
+			</Fallback>
+		</Repeat>
+	</BehaviorTree>
+	<!-- ////////// -->
+	<!-- ////////// -->
+</root>

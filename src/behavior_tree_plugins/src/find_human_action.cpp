@@ -17,43 +17,68 @@ namespace tiago_person_following
     const BT::NodeConfiguration & config)
      : BtActionNode<person_follower_interfaces::action::Kalman>(xml_tag_name, action_name, config)
   {
-    RCLCPP_INFO(node_->get_logger(), "abc");
-    look_for_id = -1; //i.e. dont look for a specific ID, but look and track a human and return with the ID
+    has_sent_goal = false;
   }
 
   void FindHumanAction::on_tick() //what the node has to do everyime it runs
   {
-    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
-    goal_.id = look_for_id;  //and this should send the ID to the action server (hopefully we will only have to run this node once, so this is fine to have in tick??)
+    getInput("target_id", look_for_id);
+    if (!has_sent_goal){
+      RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Sending goal: %d", look_for_id);
+      goal_.id = look_for_id;  //and this should send the ID to the action server 
+      has_sent_goal = true;
+    }
+    else RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Has already sent goal");
+
   }  
 
   //code that runs when waiting for result
   void FindHumanAction::on_wait_for_result()
   {
-    RCLCPP_INFO(node_->get_logger(), "FindHumanAction: Waiting for result");
   }
 
   //code that runs when the action server returns a success result
   BT::NodeStatus FindHumanAction::on_success()
   {
-    RCLCPP_INFO(node_->get_logger(), "Action success: Find Person");
+    RCLCPP_INFO(node_->get_logger(), "FindHuman: Got response from Action Server");
+    has_sent_goal=false; //Reset the has sent goal handler.
 
-    pose = result_.result->pose;
-    person_id = result_.result->tracked_id;
+    person_id = result_.result->tracked_id; 
 
-    setOutput("current_id", person_id);
-    setOutput("person_info", result_.result->pose);
-    RCLCPP_INFO(node_->get_logger(), "Pose x: %f, pose y: %f", pose.pose.position.x, pose.pose.position.y);
-    setOutput("goal", result_.result->pose);
-    setOutput("found", true);
-    setOutput("first_run_flag", false);
-    return BT::NodeStatus::SUCCESS;
+    //now we could theoretically use the findHumanAction for both a new human and same human
+    if(look_for_id == -1) //should only execute on first run (since look_for_id = -1 on first run only)
+    {
+      look_for_id = result_.result->tracked_id;    
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Setting current_id to %d", look_for_id);
+      setOutput("current_id", result_.result->tracked_id);
+      RCLCPP_INFO(node_->get_logger(), "Pose x: %f", result_.result->pose.pose.position.x);
+      setOutput("goal", result_.result->pose);
+      setOutput("found", true);
+      setOutput("got_initial_goal_output", true);
+      return BT::NodeStatus::SUCCESS;
+    } 
+    else if(result_.result->is_tracked)  //should only run when the person is tracked
+    {
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Found same person. ID: %d", look_for_id);
+      setOutput("goal", result_.result->pose);
+      setOutput("found", true);
+      return BT::NodeStatus::SUCCESS;
+    }
+    else //this is for if the ID recieved from the action server is not the same as the ID the logic needs to track
+    {
+      RCLCPP_INFO(node_->get_logger(), "FindHuman: Could not find same person, got tracked_id: %d", result_.result->tracked_id);
+      setOutput("found", false);
+      setOutput("goal", result_.result->pose); //Move to the predicted position
+      return BT::NodeStatus::FAILURE;
+    }
   }
 
   //code that runs when the action server returns an aborted result
   BT::NodeStatus FindHumanAction::on_aborted()
   {
     RCLCPP_INFO(node_->get_logger(), "Action aborted: Find Person");
+    setOutput("found", false);
+    has_sent_goal = false;
     return BT::NodeStatus::FAILURE;
   }
 
@@ -61,6 +86,8 @@ namespace tiago_person_following
   BT::NodeStatus FindHumanAction::on_cancelled()
   {
     RCLCPP_INFO(node_->get_logger(), "Action cancelled: Find Person");
+    setOutput("found", false);
+    has_sent_goal = false;
     return BT::NodeStatus::FAILURE;
   }
 }
