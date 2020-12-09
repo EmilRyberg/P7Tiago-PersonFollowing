@@ -187,6 +187,10 @@ class KalmanTracking(Node):
         center_x -= (640 / 2)  # offset center to be zero
         center_x *= -1  # flip direction
         self.head_angle += center_x * (1 / 320) * 0.45
+        if self.head_angle > 1.23:
+            self.head_angle = 1.23
+        elif self.head_angle < -1.23:
+            self.head_angle = -1.23
         self.get_logger().warn(f"head_angle {self.head_angle}")
         msg = Vector3(x=self.head_angle, y=0.0)
         self.head_move_publisher.publish(msg)

@@ -28,7 +28,7 @@
 											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
 												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
 											</GoalUpdater>
-											<TruncatePath distance="1.22" input_path="{path}" output_path="{truncated_path}" />
+											<TruncatePath distance="1.6" input_path="{path}" output_path="{truncated_path}" />
 										</Sequence>
 										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
 									</RecoveryNode>
@@ -87,7 +87,7 @@
 						<RetryUntilSuccesful num_attempts="20">
 							<Sequence>
 								<Delay delay_msec="300">
-									<Spin spin_dist="0.25" />
+									<Spin spin_dist="0.5" />
 								</Delay>
 								<FindHuman name="findHuman4" server_timeout="10000" current_id="{current_id}" target_id="{current_id}" got_initial_goal_output="{got_initial_goal_output}" found="{found}" goal="{goal}" />
 								<SetBlackboard output_key="moved_flag" value="false" />
