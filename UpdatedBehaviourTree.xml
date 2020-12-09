@@ -28,7 +28,7 @@
 											<GoalUpdater input_goal="{goal}" output_goal="{updated_goal}">
 												<ComputePathToPose goal="{updated_goal}" path="{path}" planner_id="GridBased" />
 											</GoalUpdater>
-											<TruncatePath distance="0.5" input_path="{path}" output_path="{truncated_path}" />
+											<TruncatePath distance="1.22" input_path="{path}" output_path="{truncated_path}" />
 										</Sequence>
 										<ClearEntireCostmap name="ClearGlobalCostmap-Context" service_name="global_costmap/clear_entirely_global_costmap" />
 									</RecoveryNode>
