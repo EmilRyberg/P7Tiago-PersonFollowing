@@ -457,6 +457,7 @@ class PersonDetector(Node):
             return None
         median_depth = np.median(np.array(distances))
         average_depth = dist / count
+        self.get_logger().info(f"Median depth: {median_depth}")
         return median_depth
 
     def draw_and_publish_image_with_info(self, img, bounding_boxes, id_list, tracked_id):
