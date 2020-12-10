@@ -8,12 +8,21 @@ import numpy as np
 import math
 from scipy.spatial.transform import Rotation
 import time
-from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray
+from geometry_msgs.msg import Point, Pose, PoseStamped, PoseArray, Vector3
 from std_msgs.msg import Header
 from typing import List, Tuple, Dict
+import csv
 
 VELOCITY_NORM_THRESHOLD = 2  # m/s. 2 m/s -> 7.2 km/h
 
+test3_csv = open('test2.csv', mode='w')
+fieldnames = ['time', 'angle', 'tracked']
+writer = csv.DictWriter(test3_csv, fieldnames=fieldnames)
+writer.writeheader()
+
+def log_for_test3(time, angle, tracked):
+    global writer
+    writer.writerow({'time': time, 'angle': angle, 'tracked': tracked})
 
 class KalmanTracking(Node):
     def __init__(self):
@@ -26,8 +35,10 @@ class KalmanTracking(Node):
         self._action_server = ActionServer(self, Kalman, 'find_human', self.action_cb)
         self.head_pub = self.create_publisher(BridgeAction, "/head_move_action", 1)
         self.visualization_publisher = self.create_publisher(PoseArray, "/detections_filtered", 1)
+        self.head_move_publisher = self.create_publisher(Vector3, "/head_move", 1)
         self.subscription = self.create_subscription(PersonInfoList, '/persons', self.detection_cb, 1)
         self.person_last_positions: Dict[int, Tuple[np.ndarray, float]] = {}
+        self.head_angle = 0
 
     def detection_cb(self, msg: PersonInfoList):
         ttime = msg.header.stamp.sec + msg.header.stamp.nanosec / 1e9  # Conversion to seconds
@@ -75,13 +86,19 @@ class KalmanTracking(Node):
 
         #### move camera
         current_time = time.time()
-        if current_time - self.last_sent_head_movement > 1.5:
+        if current_time - self.last_sent_head_movement > 0.3:
             self.last_sent_head_movement = current_time
             if self.tracked_id != -1:
                 tracked_person = next((x for x in persons if x.person_id == self.tracked_id), None)
                 self.get_logger().info(f"tracked person: {tracked_person}")
                 if tracked_person is not None:
                     self.move_head(tracked_person.image_x, tracked_person.image_y)
+
+        tracked_person_temp = next((x for x in persons if x.person_id == self.tracked_id), None)
+        if self.tracked_id != -1 and tracked_person_temp is not None:
+            log_for_test3(ttime, tracked_person_temp.horizontal_angle, 1)
+        else:
+            log_for_test3(ttime, -9000, 0)
 
         poses = []
         for kf_filter in self.filters.values():
@@ -165,13 +182,18 @@ class KalmanTracking(Node):
         return rotation.as_quat()
 
     def move_head(self, x, y, min_duration=0.5):
-        msg = BridgeAction()
-        msg.x = x
-        msg.y = y
-        msg.min_duration = min_duration
-        msg.max_velocity = 25.
-
-        self.head_pub.publish(msg)
+        center_x = x
+        self.get_logger().warn(f"center_x {center_x}")
+        center_x -= (640 / 2)  # offset center to be zero
+        center_x *= -1  # flip direction
+        self.head_angle += center_x * (1 / 320) * 0.45
+        if self.head_angle > 1.23:
+            self.head_angle = 1.23
+        elif self.head_angle < -1.23:
+            self.head_angle = -1.23
+        self.get_logger().warn(f"head_angle {self.head_angle}")
+        msg = Vector3(x=self.head_angle, y=0.0)
+        self.head_move_publisher.publish(msg)
 
 
 def main():

@@ -9,9 +9,10 @@ import cv2 as cv
 from person_detector.feature_extractor.feature_extractor import FeatureExtractor, embedding_distance, is_same_person
 from person_detector.person_finder.person_finder import PersonFinder
 from person_detector.feature_extractor.utils import plot_person_detections
+import numpy as np
 
-UNCONFIRMED_COUNT_THRESHOLD = 6
-UNCONFIRMED_TIME_THRESHOLD_SECONDS = 2  # secs
+UNCONFIRMED_COUNT_THRESHOLD = 8
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 20  # secs
 
 
 class PersonDetectorTest(Node):
@@ -32,8 +33,8 @@ class PersonDetectorTest(Node):
                                                          "/compressed_images",
                                                          self.image_callback,
                                                          qos_profile)
-        self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=on_gpu)
-        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=on_gpu)
+        self.feature_extractor = FeatureExtractor(feature_weights_path, on_gpu=True)
+        self.person_finder = PersonFinder(yolo_weights_path, on_gpu=True)
         self.cv_bridge = CvBridge()
         self.image = None
         self.depth_image = None
@@ -52,6 +53,10 @@ class PersonDetectorTest(Node):
         self.image = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
         self.image_stamp = msg.header.stamp
         self.image_is_updated = True
+        time_now = self.get_clock().now().to_msg()
+        if (time_now.sec + time_now.nanosec/1e9) - (self.image_stamp.sec + self.image_stamp.nanosec/1e9) > 0.1:
+            self.get_logger().warn("image too old, discarding")
+            return
         self.got_image_callback()
 
     def got_image_callback(self):
@@ -65,8 +70,9 @@ class PersonDetectorTest(Node):
             for i, (pid, emb) in enumerate(self.person_features_mapping):
                 distance = embedding_distance(features, emb)
                 self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
+                #self.get_logger().info(f"Emb {pid}: {emb}")
                 # print(f"Distance: {distance}")
-                is_below_threshold = is_same_person(features, emb, threshold=0.9)
+                is_below_threshold = is_same_person(features, emb, threshold=0.7)
                 if is_below_threshold:
                     found_same_person = True
                     features_below_threshold.append((pid, distance, person_detection, i))
@@ -82,9 +88,9 @@ class PersonDetectorTest(Node):
                         best_match = (person_detection, pid)
                         best_index = index
                 current_person_id, current_features = self.person_features_mapping[best_index]
-                new_emb = current_features * 0.8 + features * 0.2
+                new_emb = current_features * 0.9 + features * 0.10
                 diff_dist = embedding_distance(current_features, new_emb)
-                self.get_logger().info(f"Moving embedding, diff distance: {diff_dist}")
+                #self.get_logger().info(f"Moving embedding, diff distance: {diff_dist}")
                 self.person_features_mapping[best_index] = (best_match[1], new_emb)
                 person_detection_mapping.append(best_match)
             else:
@@ -98,7 +104,7 @@ class PersonDetectorTest(Node):
                         indices_to_remove.append(i)
                         continue
                     distance = embedding_distance(features, emb)
-                    is_below_threshold = is_same_person(features, emb, threshold=0.9)
+                    is_below_threshold = is_same_person(features, emb, threshold=0.7)
                     #self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
                     if is_below_threshold:
                         unconfirmed_below_threshold.append((i, distance, (emb, times_found, time_last_seen)))
@@ -109,22 +115,25 @@ class PersonDetectorTest(Node):
                         min_distance = distance
                         best_match = (i, info_tuple)
                 if best_match is not None:
-                    best_index, (emb, times_found, time_last_seen) = best_match
-                    avg_emb = (features + emb) / 2
+                    best_index, (all_features, times_found, time_last_seen) = best_match
+                    #avg_emb = (features + emb) / 2
+                    all_features.append(features)
                     new_times_found = times_found + 1
                     if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
                         indices_to_remove.append(best_index)
-                        self.person_features_mapping.append((self.person_id, avg_emb))
+                        all_features_np = np.array(all_features).reshape((-1, 8))
+                        mean_embeddings = np.mean(all_features_np, axis=0)
+                        self.person_features_mapping.append((self.person_id, mean_embeddings))
                         person_detection_mapping.append((person_detection, self.person_id))
                         self.person_id += 1
                     found_same_unconfirmed_person = True
-                    self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
+                    self.unconfirmed_persons[best_index] = (all_features, new_times_found, time_now)
                 if len(indices_to_remove) > 0:
                     self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
                                                 i not in indices_to_remove]
                     #self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
                 if not found_same_unconfirmed_person:
-                    self.unconfirmed_persons.append((features, 0, time_now))
+                    self.unconfirmed_persons.append(([features], 0, time_now))
         img_drawn = plot_person_detections(person_detection_mapping, self.image)
         cv.imshow("Image", img_drawn)
         cv.waitKey(1)

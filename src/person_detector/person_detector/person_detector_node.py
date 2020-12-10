@@ -27,8 +27,8 @@ HFOV = 1.01229096615671
 W = 640
 VFOV = 0.785398163397448
 H = 480
-UNCONFIRMED_COUNT_THRESHOLD = 3
-UNCONFIRMED_TIME_THRESHOLD_SECONDS = 10  # secs
+UNCONFIRMED_COUNT_THRESHOLD = 8
+UNCONFIRMED_TIME_THRESHOLD_SECONDS = 20  # secs
 F_X = 530.674
 F_Y = 531.818
 C_X = 315.459
@@ -50,6 +50,7 @@ class CustomDuration: # Hack to make duration for tf2_ros work since it expects 
 
 class PersonDetector(Node):
     def __init__(self, tf_buffer):
+        #cv2.namedWindow("persons")
         super().__init__("person_detector")
         self.declare_parameter("feature_weights_path")
         self.declare_parameter("yolo_weights_path")
@@ -160,6 +161,7 @@ class PersonDetector(Node):
         #self.get_logger().info("Running")
         person_detections = self.person_finder.find_persons(self.image)
         persons = []
+        filtered_bounding_boxes = []
         id_to_track = -1
         person_id = None
         for person_detection in person_detections:
@@ -186,6 +188,7 @@ class PersonDetector(Node):
                     person.image_x = int((person_detection[0] + person_detection[2]) // 2)
                     person.image_y = 240 #int(person_detection[1]) + bounding_box_height // 4
                     persons.append(person)
+                    filtered_bounding_boxes.append(person_detection)
 
                     #self.get_logger().info(f"Robot pose is None?: {robot_pose}")
 
@@ -207,10 +210,12 @@ class PersonDetector(Node):
         poses = []
         person_ids = []
         for person in persons:
+            person.pose.pose.position.z = 0.0
             poses.append(person.pose.pose)
             person_ids.append(person.person_id)
         pose_array = PoseArray(header=header, poses=poses)
         self.publisher_detections.publish(pose_array)
+        #self.draw_and_publish_image_with_info(self.image, filtered_bounding_boxes, person_ids, id_to_track)
         self.get_logger().info(f"Person IDs: {person_ids}")
 
     def find_same_person(self, features):
@@ -222,7 +227,7 @@ class PersonDetector(Node):
             distance = embedding_distance(features, emb)
             # self.get_logger().info(f"Distance to person {pid}: {distance:.5f}")
             # print(f"Distance: {distance}")
-            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            is_below_threshold = is_same_person(features, emb, threshold=0.8)
             if is_below_threshold:
                 found_same_person = True
                 distances.append(distance)
@@ -231,7 +236,7 @@ class PersonDetector(Node):
             best_match = self.find_best_match(features_below_threshold, distances)
             best_person_id, best_index = best_match
             current_person_id, current_features = self.person_features_mapping[best_index]
-            new_emb = current_features * 0.8 + features * 0.2
+            new_emb = current_features * 0.9 + features * 0.10
             self.person_features_mapping[best_index] = (best_person_id, new_emb)
             person_id = best_person_id
 
@@ -250,29 +255,32 @@ class PersonDetector(Node):
                 indices_to_remove.append(i)
                 continue
             distance = embedding_distance(features, emb)
-            is_below_threshold = is_same_person(features, emb, threshold=0.9)
+            is_below_threshold = is_same_person(features, emb, threshold=0.8)
             # self.get_logger().info(f"avg emb: {avg_emb}, original: {features}, org emb: {emb}")
             if is_below_threshold:
                 distances.append(distance)
                 unconfirmed_below_threshold.append((i, emb, times_found, time_last_seen))
         best_match = self.find_best_match(unconfirmed_below_threshold, distances)
         if best_match is not None:
-            best_index, emb, times_found, time_last_seen = best_match
-            avg_emb = (features + emb) / 2
+            best_index, all_features, times_found, time_last_seen = best_match
+            all_features.append(features)
+            #avg_emb = (features + emb) / 2
             new_times_found = times_found + 1
             if new_times_found >= UNCONFIRMED_COUNT_THRESHOLD:
+                all_features_np = np.array(all_features).reshape((-1, 8))
                 indices_to_remove.append(best_index)
-                self.person_features_mapping.append((self.person_id, avg_emb))
+                mean_embedding = np.mean(all_features_np, axis=0)
+                self.person_features_mapping.append((self.person_id, mean_embedding))
                 person_id = self.person_id
                 self.person_id += 1
             found_same_unconfirmed_person = True
-            self.unconfirmed_persons[best_index] = (avg_emb, new_times_found, time_now)
+            self.unconfirmed_persons[best_index] = (all_features, new_times_found, time_now)
         if len(indices_to_remove) > 0:
             self.unconfirmed_persons = [p for i, p in enumerate(self.unconfirmed_persons) if
                                         i not in indices_to_remove]
             # self.get_logger().info(f"New list length: {len(self.unconfirmed_persons)}")
         if not found_same_unconfirmed_person:
-            self.unconfirmed_persons.append((features, 0, time_now))
+            self.unconfirmed_persons.append(([features], 0, time_now))
 
         return person_id
 
@@ -449,10 +457,30 @@ class PersonDetector(Node):
             return None
         median_depth = np.median(np.array(distances))
         average_depth = dist / count
+        self.get_logger().info(f"Median depth: {median_depth}")
         return median_depth
 
-    def calculate_delay(self, stamp_new, stamp_old):
-        return (stamp_new.sec + stamp_new.nanosec/1e9) - (stamp_old.sec + stamp_old.nanosec/1e9)
+    def draw_and_publish_image_with_info(self, img, bounding_boxes, id_list, tracked_id):
+        self.get_logger().info("drawing image")
+        img_copy = np.copy(img)
+        font = cv2.FONT_HERSHEY_DUPLEX
+        for i, bounding_box in enumerate(bounding_boxes):
+            if id_list[i] == tracked_id:
+                color = (0,255,0)
+                thickness = 2
+            else:
+                color = (255,0,0)
+                thickness = 1
+            center_x = int((bounding_box[0] + bounding_box[2]) / 2)
+            center_y = int((bounding_box[1] + bounding_box[3]) / 2)
+            cv2.rectangle(img_copy, (bounding_box[0], bounding_box[2]), (bounding_box[1], bounding_box[3]), color, thickness)
+            cv2.rectangle(img_copy, (center_x-10, center_y-10), (center_x+10, center_y+10), color, 1)
+            cv2.putText(img_copy, f"id: {id_list[i]}", (bounding_box[0], bounding_box[1]), font, 0.7, color, thickness)
+        #image_msg = self.cv_bridge.cv2_to_imgmsg(img_copy, encoding="passthrough")
+        #self.publisher_image_with_info.publish(image_msg)
+        cv2.imshow("persons", img_copy)
+        cv2.waitKey(1)
+        #cv2.destroyWindow("persons")
 
 
 class TfListener(Node):
@@ -469,7 +497,7 @@ def main(args=None):
     tf_listener_node = TfListener()
     person_detector = PersonDetector(tf_buffer=tf_listener_node.tf_buffer)
 
-    executor = MultiThreadedExecutor()
+    executor = MultiThreadedExecutor(num_threads=2)
     executor.add_node(tf_listener_node)
     executor.add_node(person_detector)
 
