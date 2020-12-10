@@ -24,7 +24,7 @@ def matplotlib_imshow(img, one_channel=False):
 
 
 def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30,
-                  on_gpu=True, checkpoint_dir="checkpoints", batch_size=24, print_interval=50, num_classes=34):
+                  on_gpu=True, checkpoint_dir="checkpoints", batch_size=24, print_interval=50, num_classes=41):
     writer = SummaryWriter(f"runs/{run_name}")
     data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),

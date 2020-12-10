@@ -47,7 +47,7 @@ class ClassificationDataset(Dataset):
 
 
 class TripletDataset(Dataset):
-    def __init__(self, dataset_dir, images_per_class=200, image_size=(336, 120), data_transform=None):
+    def __init__(self, dataset_dir, images_per_class=2000, image_size=(336, 120), data_transform=None):
         self.super_class_folders = glob(dataset_dir + "/*/")
         self.images_grouped_by_class = []
         self.flattened_class_with_images = []
@@ -58,17 +58,18 @@ class TripletDataset(Dataset):
         class_id = 0
         for super_folder in self.super_class_folders:
             sub_folders = glob(super_folder + "/*/")
+            all_images = []
             for folder in sub_folders:
                 png_paths = glob(f"{folder}*.png")
                 jpg_paths = glob(f"{folder}*.jpg")
-                all_images = []
                 all_images.extend(png_paths)
                 all_images.extend(jpg_paths)
                 for img_path in all_images:
                     self.flattened_class_with_images.append((img_path, class_id))
-                self.images_grouped_by_class.append((class_id, all_images))
+            self.images_grouped_by_class.append((class_id, all_images))
             class_id += 1
         self.num_classes = len(self.super_class_folders)
+        print(f"{class_id}")
         self.sample_triplets()
 
     def sample_triplets(self):
