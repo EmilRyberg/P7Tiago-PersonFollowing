@@ -24,3 +24,10 @@ image saving/
 *.zip
 model_training/
 *.out.tfevents*
+*.svg
+
+*.pdf
+
+*.png
+
+*.csv

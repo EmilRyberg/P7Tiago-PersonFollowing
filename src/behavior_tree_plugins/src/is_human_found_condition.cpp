@@ -21,8 +21,6 @@ namespace tiago_person_following
   {
     getInput("found", is_human_found_);
 
-    std::cerr << "Is human found?" << is_human_found_ << std::endl;
-
     if(is_human_found_)
     {
       std::cerr << "humanFoundCondition: True" << std::endl;
