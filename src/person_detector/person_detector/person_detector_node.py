@@ -159,6 +159,7 @@ class PersonDetector(Node):
         self.depth_is_updated = False
 
         #self.get_logger().info("Running")
+        # YOLO and the feature detection network is trained on RGB, but here the image is BGR..
         person_detections = self.person_finder.find_persons(self.image)
         persons = []
         filtered_bounding_boxes = []

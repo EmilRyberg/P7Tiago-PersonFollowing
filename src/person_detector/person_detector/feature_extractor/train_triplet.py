@@ -52,6 +52,7 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
                 anchor = anchor.cuda()
                 positive = positive.cuda()
 
+            # First we run the anchors and positives through the network to get embeddings
             optimizer.zero_grad()
             anchor_embeddings = model(anchor)
             anchor_embeddings = F.normalize(anchor_embeddings, p=2) # L2 normalization so embeddings live inside unit hyper-sphere
@@ -63,8 +64,10 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             anchor_embeddings_np = anchor_embeddings.detach().cpu().data.numpy()
             positive_embeddings_np = positive_embeddings.detach().cpu().data.numpy()
             all_images = torch.cat((anchor, positive), dim=0)
+            # call resample triplets to obtain negative triples, where are the ones violating the margin -> the hardest
             negative_indices = resample_triplets(class_ids_np, anchor_embeddings_np, positive_embeddings_np)
             negative_indices_tensor = torch.tensor(negative_indices)
+            # we run the negative images through
             if on_gpu:
                 negative_indices_tensor = negative_indices_tensor.cuda()
             new_negatives = all_images.detach().index_select(0, negative_indices_tensor)
@@ -73,6 +76,7 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
             new_negative_embeddings = model(new_negatives)
             new_negative_embeddings = F.normalize(new_negative_embeddings, p=2)
 
+            # compute the triplet loss
             loss = criterion(anchor_embeddings, positive_embeddings, new_negative_embeddings)
             loss.backward()
             optimizer.step()
@@ -99,18 +103,19 @@ def train_triplet(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     writer.close()
 
 
+# this function resamples the triplets from anchors and positive embeddings, in order to obtain the best negative samples
 def resample_triplets(class_id_np, anchor_emb, positive_emb, alpha=0.2):
     new_negative_indices = []
-    class_id_np_2x = np.tile(np.expand_dims(class_id_np, axis=1), (2, 1))
-    all_embeddings_np = np.concatenate((anchor_emb, positive_emb), axis=0)
+    class_id_np_2x = np.tile(np.expand_dims(class_id_np, axis=1), (2, 1)) # just copies the class_id list so it is twice as long
+    all_embeddings_np = np.concatenate((anchor_emb, positive_emb), axis=0) # concatenates anchor and positive embeddings
     for i, (cid, a_emb, p_emb) in enumerate(zip(class_id_np, anchor_emb, positive_emb)):
-        pos_dist = np.linalg.norm(a_emb - p_emb)
-        original_indices = get_all_other_images_and_embeddings(class_id_np_2x, cid)
-        a_repeat_emb = np.tile(a_emb, (len(original_indices), 1))
-        negative_emb = np.take(all_embeddings_np, original_indices, axis=0)
-        neg_dist = np.linalg.norm(a_repeat_emb - negative_emb, axis=1).reshape((-1, 1))
+        pos_dist = np.linalg.norm(a_emb - p_emb) # compute the distance between the anchor and positive embedding
+        original_indices = get_all_other_images_and_embeddings(class_id_np_2x, cid) # gets the indices of all other classes
+        a_repeat_emb = np.tile(a_emb, (len(original_indices), 1)) # repeats the anchor embedding to be length of the original_indices
+        negative_emb = np.take(all_embeddings_np, original_indices, axis=0) # take all the embeddings with the indicies in the original_indices list
+        neg_dist = np.linalg.norm(a_repeat_emb - negative_emb, axis=1).reshape((-1, 1)) # compute the distance between the anchor and all the negative embeddings
         pos_dist_repeat = np.tile(pos_dist, (negative_emb.shape[0], 1))
-        neg_indices, _ = np.nonzero(neg_dist - pos_dist_repeat < alpha)
+        neg_indices, _ = np.nonzero(neg_dist - pos_dist_repeat < alpha) # the indices which are below alpha to the positive
         if neg_indices.shape[0] == 0:
             #print("WARNING: No embedding distance below alpha, picking random triplets")
             batch_len = len(original_indices)

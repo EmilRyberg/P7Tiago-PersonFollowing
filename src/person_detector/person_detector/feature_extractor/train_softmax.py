@@ -23,9 +23,12 @@ def matplotlib_imshow(img, one_channel=False):
         plt.imshow(np.transpose(npimg, (1, 2, 0)))
 
 
+# function for first step in training, train a classifier
 def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=None, epochs=30,
                   on_gpu=True, checkpoint_dir="checkpoints", batch_size=24, print_interval=50, num_classes=41):
+    # Just a writer that writes for TensorBoard
     writer = SummaryWriter(f"runs/{run_name}")
+    # Transforms applied to images
     data_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -64,6 +67,7 @@ def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
     if on_gpu:
         model = model.cuda()
     running_loss = 0.0
+    # here we start training
     for epoch in range(epochs):
         model.train()
         for i, data in enumerate(dataloader, 0):
@@ -72,8 +76,10 @@ def train_softmax(dataset_dir, weights_dir=None, run_name="run1", image_size=Non
                 inputs = inputs.cuda()
                 super_class_labels = super_class_labels.cuda()
                 labels = labels.cuda()
+
             optimizer.zero_grad()
             outputs = model(inputs)
+            # split outputs so we can compute super-class loss and sub-class loss
             super_class_outputs = outputs[:, :6]
             specific_class_outputs = outputs[:, 6:]
             super_class_loss = criterion(super_class_outputs, super_class_labels)
